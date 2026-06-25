@@ -98,10 +98,14 @@ A general `sendEmail()` helper (e.g. overdue-rent notices, application updates).
 
 ---
 
-## Production database (Postgres)
+## Database (PostgreSQL)
 
-The schema is Postgres-compatible. To switch off SQLite:
+The app uses PostgreSQL for both local dev and production.
 
-1. In `prisma/schema.prisma`, set `datasource db { provider = "postgresql" }`.
-2. In `.env`, set `DATABASE_URL` to your Postgres connection string.
-3. `npm run db:push && npm run db:seed`.
+1. Create a free database (Neon at neon.tech, or Vercel Postgres) and copy its
+   connection string.
+2. Put it in `.env` as `DATABASE_URL`.
+3. Run `npm run setup` to create the tables and seed demo data.
+
+Use the same `DATABASE_URL` in your Vercel project's Environment Variables, plus
+a `SESSION_SECRET`.

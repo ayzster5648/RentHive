@@ -8,17 +8,20 @@ managing properties, units, leases, rent, and maintenance.
 ## Stack
 
 - **Next.js 15** (App Router, React 19, Server Actions)
-- **Prisma ORM** — SQLite in dev (zero setup), Postgres-ready for production
+- **Prisma ORM** — PostgreSQL (local dev and production)
 - **Tailwind CSS**
 - Cookie-based session auth with role separation (landlord / tenant)
 
 ## Quick start
 
+You need a PostgreSQL database. The fastest free option is [Neon](https://neon.tech)
+or Vercel Postgres — create one, copy its connection string (~2 minutes, no install).
+
 ```bash
 npm install
-cp .env.example .env   # then edit if needed (works as-is for local dev)
-npm run setup          # generates client, creates the SQLite DB, seeds demo data
-npm run dev            # http://localhost:3000
+cp .env.example .env        # then paste your Postgres URL into DATABASE_URL
+npm run setup               # generates client, creates tables, seeds demo data
+npm run dev                 # http://localhost:3000
 ```
 
 ### Demo accounts (password: `password123`)
@@ -54,11 +57,15 @@ npm run dev            # http://localhost:3000
 | `npm run db:studio`| Open Prisma Studio to browse data         |
 | `npm run build`    | Production build                          |
 
-## Switching to Postgres
+## Deploying to Vercel
 
-1. In `prisma/schema.prisma`, set `datasource db { provider = "postgresql" }`.
-2. In `.env`, set `DATABASE_URL` to your Postgres connection string.
-3. Run `npm run db:push && npm run db:seed`.
+1. Create a free Postgres database (Neon or Vercel Postgres) and copy its
+   connection string.
+2. Locally, put that string in `.env` as `DATABASE_URL`, then run
+   `npm run setup` once to create the tables and seed demo data.
+3. On Vercel: **Import** this repo, set the **Framework Preset to Next.js**, and
+   add two Environment Variables — `DATABASE_URL` (same string) and
+   `SESSION_SECRET` (any long random value). Deploy.
 
 ## External integrations
 

@@ -1,12 +1,13 @@
 // RentHive data model.
-// Dev uses SQLite for zero-config local runs. For production Postgres,
-// change `provider` to "postgresql" and update DATABASE_URL in .env.
+// Uses PostgreSQL for both local dev and production (Vercel-ready).
+// Set DATABASE_URL in .env to your Postgres connection string (e.g. a free
+// Neon or Vercel Postgres database). See INTEGRATIONS.md.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
