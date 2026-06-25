@@ -1,13 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { login } from "./actions";
 import { Icons } from "@/components/icons";
-
-const demoAccounts = [
-  { role: "Landlord", email: "landlord@renthive.com" },
-  { role: "Tenant", email: "alex@example.com" },
-];
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, null);
@@ -40,18 +36,10 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <div className="mt-5 rounded-lg border border-dashed border-gray-300 bg-white/60 p-4 text-sm">
-          <p className="mb-2 font-medium text-gray-700">Demo accounts</p>
-          <ul className="space-y-1 text-gray-600">
-            {demoAccounts.map((a) => (
-              <li key={a.email} className="flex justify-between">
-                <span className="text-gray-500">{a.role}</span>
-                <code className="text-xs">{a.email}</code>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-gray-400">Password for all: <code>password123</code></p>
-        </div>
+        <p className="mt-5 text-center text-sm text-gray-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-brand-600 hover:underline">Sign up</Link>
+        </p>
       </div>
     </div>
   );

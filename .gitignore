@@ -25,3 +25,6 @@ next-env.d.ts
 # local-only working files (not part of the app)
 /TenantCloud Reference Images/
 .claude/
+
+.vercel
+.env*

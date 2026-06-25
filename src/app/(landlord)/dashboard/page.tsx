@@ -25,12 +25,14 @@ export default async function DashboardPage({
 }) {
   const { tab = "overview" } = await searchParams;
   const user = await requireRole("LANDLORD");
+  const setup = await getSetupState(user.id);
 
   const tabs = [
     { key: "overview", label: "Overview", href: "/dashboard" },
     { key: "calendar", label: "Calendar", href: "/dashboard?tab=calendar" },
     { key: "tasks", label: "Tasks", href: "/dashboard?tab=tasks" },
-    { key: "setup", label: "Setup", href: "/dashboard?tab=setup" },
+    // The setup tab disappears once everything is done.
+    ...(setup.percent < 100 ? [{ key: "setup", label: "Setup", href: "/dashboard?tab=setup" }] : []),
   ];
 
   return (

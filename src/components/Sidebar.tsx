@@ -65,14 +65,14 @@ export function Sidebar({
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
-      <div className="flex items-center gap-2 px-5 py-4">
+      <Link href={role === "LANDLORD" ? "/dashboard" : "/portal"} className="flex items-center gap-2 px-5 py-4 transition-opacity hover:opacity-80">
         {Icons.logo({ className: "h-8 w-8" })}
         <span className="text-lg font-bold text-gray-900">RentHive</span>
-      </div>
+      </Link>
 
       <div className="space-y-3 px-3 pb-3">
         {role === "LANDLORD" && <CreateNewMenu />}
-        {role === "LANDLORD" && (
+        {role === "LANDLORD" && setupPercent < 100 && (
           <Link href="/dashboard?tab=setup" className="block rounded-lg bg-brand-50 px-3 py-2.5 transition-colors hover:bg-brand-100">
             <div className="mb-1.5 flex items-center gap-2 text-sm font-medium text-brand-800">
               {Icons.renters({ className: "h-4 w-4" })}

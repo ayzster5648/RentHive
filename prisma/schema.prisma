@@ -97,15 +97,20 @@ enum MaintenancePriority {
 }
 
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
-  password         String
-  name             String
-  phone            String?
-  emergencyContact String?
-  notes            String?
-  role             Role     @default(TENANT)
-  createdAt        DateTime @default(now())
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String
+  name               String
+  phone              String?
+  company            String?
+  emergencyContact   String?
+  notes              String?
+  role               Role     @default(TENANT)
+  notifyOverdue      Boolean  @default(true)
+  notifyApplications Boolean  @default(true)
+  notifyMaintenance  Boolean  @default(true)
+  notifyInspections  Boolean  @default(true)
+  createdAt          DateTime @default(now())
 
   // A landlord owns properties; a tenant holds leases.
   properties Property[] @relation("LandlordProperties")
