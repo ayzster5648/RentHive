@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
+import { getSetupState } from "@/lib/setup";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { PageHeader, StatCard, Badge, Avatar, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
-import { Icons } from "@/components/icons";
+import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { TaskItem } from "./TaskItem";
 import { AddTaskButton, AddReminderButton } from "./QuickAdd";
+import { SetupChecklist } from "./SetupChecklist";
 
 const reminderColors: Record<string, string> = {
   LEASE: "bg-red-50 text-red-700",
@@ -24,75 +26,145 @@ export default async function DashboardPage({
   const { tab = "overview" } = await searchParams;
   const user = await requireRole("LANDLORD");
 
-  const properties = await db.property.findMany({ where: { landlordId: user.id }, include: { units: true } });
-  const propertyIds = properties.map((p) => p.id);
-  const units = properties.flatMap((p) => p.units);
-  const occupied = units.filter((u) => u.status === "OCCUPIED").length;
-  const occupancyRate = units.length ? Math.round((occupied / units.length) * 100) : 0;
-
   const tabs = [
     { key: "overview", label: "Overview", href: "/dashboard" },
     { key: "calendar", label: "Calendar", href: "/dashboard?tab=calendar" },
     { key: "tasks", label: "Tasks", href: "/dashboard?tab=tasks" },
+    { key: "setup", label: "Setup", href: "/dashboard?tab=setup" },
   ];
 
   return (
     <div>
-      <PageHeader title="Dashboard" />
+      <PageHeader title="Dashboard" subtitle={`Welcome back, ${user.name.split(" ")[0]}`} />
       <Tabs tabs={tabs} active={tab} />
 
-      {tab === "overview" && <Overview user={user} propertyIds={propertyIds} properties={properties} units={units} occupied={occupied} occupancyRate={occupancyRate} />}
+      {tab === "overview" && <Overview landlordId={user.id} />}
       {tab === "calendar" && <CalendarTab />}
       {tab === "tasks" && <TasksTab />}
+      {tab === "setup" && <SetupTab landlordId={user.id} />}
     </div>
   );
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-async function Overview({ user, propertyIds, properties, units, occupied, occupancyRate }: any) {
-  const leases = await db.lease.findMany({
-    where: { unit: { propertyId: { in: propertyIds } } },
-    include: { invoices: true },
-  });
-  const allInvoices = leases.flatMap((l) => l.invoices);
-  const outstanding = allInvoices.filter((i) => i.status !== "PAID").reduce((s, i) => s + i.amount, 0);
+async function Overview({ landlordId }: { landlordId: string }) {
+  const propertyIds = (await db.property.findMany({ where: { landlordId }, select: { id: true } })).map((p) => p.id);
+  const ownedLease = { unit: { propertyId: { in: propertyIds } } };
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const collected = (
-    await db.payment.findMany({ where: { paidAt: { gte: monthStart }, invoice: { lease: { unit: { propertyId: { in: propertyIds } } } } } })
-  ).reduce((s, p) => s + p.amount, 0);
-  const expensesThisMonth = (
-    await db.expense.findMany({ where: { date: { gte: monthStart }, propertyId: { in: propertyIds } } })
-  ).reduce((s, e) => s + e.amount, 0);
 
-  const overdue = await db.invoice.findMany({
-    where: { status: "OVERDUE", lease: { unit: { propertyId: { in: propertyIds } } } },
-    include: { lease: { include: { tenant: true, unit: true } } },
-    orderBy: { dueDate: "asc" },
-  });
-  const recentRequests = await db.maintenanceRequest.findMany({
-    where: { unit: { propertyId: { in: propertyIds } } },
-    include: { tenant: true, unit: { include: { property: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-  });
-  const newApplications = await db.application.count({ where: { status: "NEW" } });
+  const [setup, leases, payments, expenses, overdue, recentRequests, newApplications, reminders] = await Promise.all([
+    getSetupState(landlordId),
+    db.lease.findMany({ where: ownedLease, select: { status: true, startDate: true } }),
+    db.payment.findMany({ where: { paidAt: { gte: monthStart }, invoice: { lease: ownedLease } } }),
+    db.expense.findMany({ where: { date: { gte: monthStart }, OR: [{ property: { landlordId } }, { propertyId: null }] } }),
+    db.invoice.findMany({ where: { status: "OVERDUE", lease: ownedLease }, include: { lease: { include: { tenant: true, unit: true } } }, orderBy: { dueDate: "asc" }, take: 4 }),
+    db.maintenanceRequest.findMany({ where: { unit: { propertyId: { in: propertyIds } } }, include: { tenant: true, unit: true }, orderBy: { createdAt: "desc" }, take: 4 }),
+    db.application.count({ where: { status: "NEW" } }),
+    db.reminder.findMany({ where: { date: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } }, orderBy: { date: "asc" }, take: 4 }),
+  ]);
+
+  const income = payments.reduce((s, p) => s + p.amount, 0);
+  const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
+  const net = income - expenseTotal;
+  const maxBar = Math.max(income, expenseTotal, 1);
+
+  const funnel = {
+    active: leases.filter((l) => l.status === "ACTIVE").length,
+    future: leases.filter((l) => l.status === "PENDING" && new Date(l.startDate) > now).length,
+    drafted: 0,
+    ended: leases.filter((l) => l.status === "ENDED").length,
+  };
 
   return (
-    <div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Properties" value={String(properties.length)} sub={`${units.length} units`} />
-        <StatCard label="Occupancy" value={`${occupancyRate}%`} sub={`${occupied}/${units.length} occupied`} accent="green" />
-        <StatCard label="Collected this month" value={formatCurrency(collected)} sub={`${formatCurrency(expensesThisMonth)} expenses`} accent="green" />
-        <StatCard label="Outstanding" value={formatCurrency(outstanding)} sub={newApplications ? `${newApplications} new applicants` : undefined} accent={outstanding > 0 ? "red" : "brand"} />
+    <div className="space-y-6">
+      {/* Setup banner if incomplete */}
+      {setup.percent < 100 && <SetupChecklist setup={setup} compact />}
+
+      {/* Top row: reminders + accounting */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="card p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Today</h2>
+            <Link href="/dashboard?tab=calendar" className="text-sm font-medium text-brand-600 hover:underline">Calendar</Link>
+          </div>
+          {reminders.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-400">No upcoming reminders.</p>
+          ) : (
+            <ul className="space-y-2">
+              {reminders.map((r) => (
+                <li key={r.id} className={cn("rounded-lg px-3 py-2 text-sm", reminderColors[r.type])}>
+                  <p className="font-medium">{r.title}</p>
+                  <p className="text-xs opacity-70">{formatDate(r.date)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Accounting */}
+        <div className="card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Accounting <span className="text-sm font-normal text-gray-400">· this month</span></h2>
+            <Link href="/transactions" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs font-medium text-gray-500">Income</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(income)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Expenses</p>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(expenseTotal)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Net</p>
+              <p className={cn("text-2xl font-bold", net >= 0 ? "text-gray-900" : "text-red-600")}>{formatCurrency(net)}</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="w-16 text-xs text-gray-500">Income</span>
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-green-500" style={{ width: `${(income / maxBar) * 100}%` }} /></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-16 text-xs text-gray-500">Expenses</span>
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-red-500" style={{ width: `${(expenseTotal / maxBar) * 100}%` }} /></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Recently viewed */}
+      <RecentlyViewed />
+
+      {/* Leases funnel */}
+      <div className="card p-5">
+        <h2 className="mb-4 font-semibold text-gray-900">Leases</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            { label: "Active leases", value: funnel.active, color: "text-green-600", dot: "bg-green-500" },
+            { label: "Future", value: funnel.future, color: "text-amber-600", dot: "bg-amber-500" },
+            { label: "Drafted", value: funnel.drafted, color: "text-gray-600", dot: "bg-gray-400" },
+            { label: "Ended", value: funnel.ended, color: "text-red-600", dot: "bg-red-500" },
+          ].map((f) => (
+            <div key={f.label} className="rounded-lg border border-gray-100 p-4">
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2.5 w-2.5 rounded-full", f.dot)} />
+                <span className="text-sm text-gray-500">{f.label}</span>
+              </div>
+              <p className={cn("mt-1 text-2xl font-bold", f.color)}>{f.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Overdue + Maintenance + Applicants */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Overdue rent</h2>
-            <Link href="/revenues" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
+            <Link href="/revenues?tab=overdue" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
           </div>
           {overdue.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400">No overdue invoices 🎉</p>
@@ -117,28 +189,47 @@ async function Overview({ user, propertyIds, properties, units, occupied, occupa
           )}
         </div>
 
-        <div className="card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Recent maintenance</h2>
-            <Link href="/maintenance" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
+        <div className="space-y-6">
+          <div className="card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900">Maintenance</h2>
+              <Link href="/maintenance" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
+            </div>
+            {recentRequests.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-400">No requests.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {recentRequests.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{r.title}</p>
+                      <p className="text-xs text-gray-400">{r.unit.label} · {r.tenant.name}</p>
+                    </div>
+                    <Badge status={r.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {recentRequests.length === 0 ? (
-            <EmptyState title="No requests yet" />
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {recentRequests.map((r) => (
-                <li key={r.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                    <p className="text-xs text-gray-400">{r.unit.property.name} · {r.unit.label} · {r.tenant.name}</p>
-                  </div>
-                  <Badge status={r.status} />
-                </li>
-              ))}
-            </ul>
-          )}
+
+          <Link href="/listings?tab=applications" className="card flex items-center justify-between p-5 transition-shadow hover:shadow-md">
+            <div>
+              <h2 className="font-semibold text-gray-900">Manage applicants</h2>
+              <p className="text-sm text-gray-500">{newApplications > 0 ? `${newApplications} new application${newApplications !== 1 ? "s" : ""} to review` : "Review and screen applicants"}</p>
+            </div>
+            {newApplications > 0 && <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-brand-600 px-2 text-sm font-semibold text-white">{newApplications}</span>}
+          </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+async function SetupTab({ landlordId }: { landlordId: string }) {
+  const setup = await getSetupState(landlordId);
+  return (
+    <div className="max-w-2xl">
+      <SetupChecklist setup={setup} />
     </div>
   );
 }

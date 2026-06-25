@@ -72,18 +72,20 @@ export function Sidebar({
 
       <div className="space-y-3 px-3 pb-3">
         {role === "LANDLORD" && <CreateNewMenu />}
-        <div className="rounded-lg bg-brand-50 px-3 py-2.5">
-          <div className="mb-1.5 flex items-center gap-2 text-sm font-medium text-brand-800">
-            {Icons.renters({ className: "h-4 w-4" })}
-            Finish account setup
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-100">
-              <div className="h-full rounded-full bg-brand-500" style={{ width: `${setupPercent}%` }} />
+        {role === "LANDLORD" && (
+          <Link href="/dashboard?tab=setup" className="block rounded-lg bg-brand-50 px-3 py-2.5 transition-colors hover:bg-brand-100">
+            <div className="mb-1.5 flex items-center gap-2 text-sm font-medium text-brand-800">
+              {Icons.renters({ className: "h-4 w-4" })}
+              Finish account setup
             </div>
-            <span className="text-xs font-semibold text-brand-700">{setupPercent}%</span>
-          </div>
-        </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-100">
+                <div className="h-full rounded-full bg-brand-500" style={{ width: `${setupPercent}%` }} />
+              </div>
+              <span className="text-xs font-semibold text-brand-700">{setupPercent}%</span>
+            </div>
+          </Link>
+        )}
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">

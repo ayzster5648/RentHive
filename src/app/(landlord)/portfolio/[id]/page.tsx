@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
 import { PageHeader, Badge } from "@/components/ui";
 import { Icons } from "@/components/icons";
+import { TrackView } from "@/components/TrackView";
 import { AddUnitButton } from "./AddUnitButton";
 
 export default async function PropertyDetailPage({
@@ -36,6 +37,7 @@ export default async function PropertyDetailPage({
 
   return (
     <div>
+      <TrackView id={property.id} name={property.name} sub={`${property.address}, ${property.city}`} />
       <Link href="/portfolio" className="mb-4 inline-block text-sm text-brand-600 hover:underline">
         ← Back to portfolio
       </Link>
