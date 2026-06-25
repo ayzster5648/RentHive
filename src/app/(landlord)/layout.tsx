@@ -15,11 +15,14 @@ export default async function LandlordLayout({
     getSetupState(user.id),
   ]);
 
+  // Show the company name in the chrome when "display as company" is on.
+  const displayName = user.displayAsCompany && user.company ? user.company : user.name;
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar role="LANDLORD" userName={user.name} setupPercent={setup.percent} />
+      <Sidebar role="LANDLORD" userName={displayName} setupPercent={setup.percent} />
       <div className="flex flex-1 flex-col overflow-x-hidden">
-        <TopBar userName={user.name} userEmail={user.email} notifications={notifications} />
+        <TopBar userName={displayName} userEmail={user.email} notifications={notifications} />
         <main className="flex-1 px-8 py-7">{children}</main>
       </div>
     </div>
