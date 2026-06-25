@@ -1,0 +1,27 @@
+# dependencies & build output
+/node_modules
+/.next
+/out
+/build
+
+# logs & OS junk
+*.log
+.DS_Store
+desktop.ini
+
+# secrets — never commit real env files
+.env
+.env*.local
+# ...but DO commit the template
+!.env.example
+
+# local SQLite database
+/prisma/*.db
+/prisma/*.db-journal
+
+# Next.js generated types
+next-env.d.ts
+
+# local-only working files (not part of the app)
+/TenantCloud Reference Images/
+.claude/
