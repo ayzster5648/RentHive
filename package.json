@@ -11,6 +11,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "db:fresh": "tsx prisma/fresh.ts",
+    "backup": "tsx prisma/backup.ts",
+    "restore": "tsx prisma/restore.ts",
     "db:studio": "prisma studio",
     "setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
   },

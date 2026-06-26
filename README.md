@@ -53,9 +53,21 @@ npm run dev                 # http://localhost:3000
 | ------------------ | ----------------------------------------- |
 | `npm run dev`      | Start the dev server                      |
 | `npm run setup`    | Generate client + create DB + seed        |
-| `npm run db:reset` | Wipe and reseed the database              |
+| `npm run backup`   | Snapshot the whole database to `/backups` |
+| `npm run restore -- <file>` | Rebuild the database from a backup |
 | `npm run db:studio`| Open Prisma Studio to browse data         |
 | `npm run build`    | Production build                          |
+
+## Data safety & backups
+
+- Your data lives in a managed PostgreSQL database (Neon), which is durable and
+  survives all app redeploys and restarts.
+- **Backups:** run `npm run backup` to write a timestamped JSON snapshot of every
+  table to `/backups` (gitignored — it contains tenant personal data). Restore any
+  snapshot with `npm run restore -- backups/backup-<timestamp>.json`.
+- **Accidental-wipe protection:** `npm run setup`, `db:reset`, and `db:fresh` refuse
+  to run against a database that already has data unless you set `ALLOW_DB_WIPE=1`.
+- For automatic point-in-time recovery, enable history/restore in your Neon project.
 
 ## Deploying to Vercel
 

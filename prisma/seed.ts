@@ -4,6 +4,19 @@ import bcrypt from "bcryptjs";
 const db = new PrismaClient();
 
 async function main() {
+  // Safety guard: refuse to wipe a database that already has real data,
+  // unless explicitly overridden with ALLOW_DB_WIPE=1.
+  const userCount = await db.user.count();
+  if (userCount > 0 && process.env.ALLOW_DB_WIPE !== "1") {
+    console.error(
+      "\n⛔ This database already has data (" + userCount + " users).\n" +
+      "   Running the seed would DELETE everything and load demo data.\n" +
+      "   If that's really what you want, run:  ALLOW_DB_WIPE=1 npm run db:seed\n" +
+      "   (Tip: take a backup first with `npm run backup`.)\n"
+    );
+    process.exit(1);
+  }
+
   console.log("Seeding RentHive demo data...");
 
   // Clear existing data (order matters for FK constraints).

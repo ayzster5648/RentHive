@@ -19,6 +19,9 @@ desktop.ini
 /prisma/*.db
 /prisma/*.db-journal
 
+# database backups — contain tenant personal data, keep out of git
+/backups/
+
 # Next.js generated types
 next-env.d.ts
 

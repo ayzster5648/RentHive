@@ -10,6 +10,19 @@ const LANDLORD_EMAIL = "landlord@renthive.com";
 const LANDLORD_NAME = "Property Manager";
 
 async function main() {
+  // Safety guard: refuse to wipe a database that already has data,
+  // unless explicitly overridden with ALLOW_DB_WIPE=1.
+  const propertyCount = await db.property.count();
+  if (propertyCount > 0 && process.env.ALLOW_DB_WIPE !== "1") {
+    console.error(
+      "\n⛔ This database already has data (" + propertyCount + " properties).\n" +
+      "   `db:fresh` would DELETE all properties, tenants, and records.\n" +
+      "   If you're sure, run:  ALLOW_DB_WIPE=1 npm run db:fresh\n" +
+      "   (Tip: take a backup first with `npm run backup`.)\n"
+    );
+    process.exit(1);
+  }
+
   await db.payment.deleteMany();
   await db.invoice.deleteMany();
   await db.maintenanceRequest.deleteMany();
