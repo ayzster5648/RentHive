@@ -1,0 +1,33 @@
+name: Weekly Excel backup
+
+# Runs every Monday at 13:00 UTC, and can be run manually from the Actions tab.
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Emails the spreadsheet to BACKUP_EMAIL. We do NOT upload it as a GitHub
+      # artifact because this repo is public and the file contains tenant data.
+      - name: Export to Excel and email it
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BACKUP_EMAIL: ${{ secrets.BACKUP_EMAIL }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: npm run export:xlsx

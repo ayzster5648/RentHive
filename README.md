@@ -69,6 +69,30 @@ npm run dev                 # http://localhost:3000
   to run against a database that already has data unless you set `ALLOW_DB_WIPE=1`.
 - For automatic point-in-time recovery, enable history/restore in your Neon project.
 
+### Excel export
+
+`npm run export:xlsx` writes a multi-sheet `.xlsx` (Summary, Properties, Units,
+Tenants, Leases, Invoices, Payments, Expenses, Maintenance, Applications,
+Inspections) to `/exports`.
+
+### Automatic weekly Excel backup by email
+
+`.github/workflows/weekly-backup.yml` runs the export every Monday (and on demand
+from the Actions tab) and **emails** the spreadsheet to you. To turn it on, add
+these repository secrets (GitHub → repo → Settings → Secrets and variables →
+Actions → New repository secret):
+
+| Secret | Value |
+| ------ | ----- |
+| `DATABASE_URL` | your Neon connection string |
+| `RESEND_API_KEY` | a free key from [resend.com](https://resend.com) |
+| `BACKUP_EMAIL` | the address to send the spreadsheet to |
+| `EMAIL_FROM` | optional sender; defaults to Resend's test sender |
+
+With Resend's default test sender you can email **your own Resend account address**
+without verifying a domain. To send to any address, verify a domain in Resend and
+set `EMAIL_FROM` to an address on it.
+
 ## Deploying to Vercel
 
 1. Create a free Postgres database (Neon or Vercel Postgres) and copy its
