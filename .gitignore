@@ -23,6 +23,11 @@ desktop.ini
 /backups/
 /exports/
 
+# Google service-account credentials — never commit
+*service-account*.json
+*gserviceaccount*.json
+google-credentials*.json
+
 # Next.js generated types
 next-env.d.ts
 

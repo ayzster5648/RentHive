@@ -75,23 +75,34 @@ npm run dev                 # http://localhost:3000
 Tenants, Leases, Invoices, Payments, Expenses, Maintenance, Applications,
 Inspections) to `/exports`.
 
-### Automatic weekly Excel backup by email
+### Auto-updating Google Sheet (weekly)
 
-`.github/workflows/weekly-backup.yml` runs the export every Monday (and on demand
-from the Actions tab) and **emails** the spreadsheet to you. To turn it on, add
-these repository secrets (GitHub → repo → Settings → Secrets and variables →
-Actions → New repository secret):
+`.github/workflows/weekly-backup.yml` runs every Monday (and on demand from the
+Actions tab) and writes all your data into a Google Sheet — one tab per data type.
+Open the same sheet anytime and it's current. `npm run sync:sheets` does the same
+locally.
+
+One-time setup:
+
+1. Create a Google Sheet and copy its **ID** from the URL
+   (`docs.google.com/spreadsheets/d/<THIS_PART>/edit`).
+2. In [Google Cloud Console](https://console.cloud.google.com): create a project,
+   enable the **Google Sheets API**, create a **Service Account**, and add a
+   **JSON key** for it. Download the key file.
+3. **Share** the Google Sheet (Share button) with the service account's email
+   (`...@...iam.gserviceaccount.com`) as an **Editor**.
+4. Add repository secrets (GitHub → Settings → Secrets and variables → Actions):
 
 | Secret | Value |
 | ------ | ----- |
 | `DATABASE_URL` | your Neon connection string |
-| `RESEND_API_KEY` | a free key from [resend.com](https://resend.com) |
-| `BACKUP_EMAIL` | the address to send the spreadsheet to |
-| `EMAIL_FROM` | optional sender; defaults to Resend's test sender |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | the full contents of the downloaded JSON key |
+| `GOOGLE_SHEET_ID` | the sheet ID from step 1 |
 
-With Resend's default test sender you can email **your own Resend account address**
-without verifying a domain. To send to any address, verify a domain in Resend and
-set `EMAIL_FROM` to an address on it.
+5. Run it once from the **Actions** tab → "Weekly Google Sheet sync" → **Run workflow**.
+
+To run locally, put the same three values in `.env` (`GOOGLE_SERVICE_ACCOUNT_JSON`
+as a single line) and run `npm run sync:sheets`.
 
 ## Deploying to Vercel
 
