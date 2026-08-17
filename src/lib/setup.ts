@@ -33,7 +33,7 @@ export async function getSetupState(landlordId: string): Promise<SetupState> {
       title: "Add a property",
       description: "Create a property to manage in your portfolio.",
       done: propertyCount > 0,
-      href: "/portfolio?new=property",
+      href: "/portfolio/new",
       cta: "Add property",
     },
     {

@@ -28,6 +28,66 @@ export async function createProperty(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+/** Rich create-property form: general info, type, single-unit details, amenities. */
+export async function createPropertyFull(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const state = String(formData.get("state") ?? "").trim();
+  const zip = String(formData.get("zip") ?? "").trim();
+  if (!name || !address || !city || !state || !zip) {
+    throw new Error("Property name and full address are required.");
+  }
+
+  const unitType = String(formData.get("unitType") ?? "SINGLE");
+  const yearBuiltRaw = String(formData.get("yearBuilt") ?? "").trim();
+  const property = await db.property.create({
+    data: {
+      name,
+      address,
+      city,
+      state,
+      zip,
+      country: String(formData.get("country") ?? "United States").trim() || "United States",
+      type: String(formData.get("type") ?? "House"),
+      unitType,
+      yearBuilt: yearBuiltRaw ? Number(yearBuiltRaw) : null,
+      mls: String(formData.get("mls") ?? "").trim() || null,
+      isMobileHome: formData.get("isMobileHome") === "yes",
+      isAffordableHousing: formData.get("isAffordableHousing") === "yes",
+      parking: String(formData.get("parking") ?? "").trim() || null,
+      laundry: String(formData.get("laundry") ?? "").trim() || null,
+      airConditioning: String(formData.get("airConditioning") ?? "").trim() || null,
+      features: formData.getAll("features").map(String),
+      amenities: formData.getAll("amenities").map(String),
+      imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
+      landlordId: user.id,
+    },
+  });
+
+  // A single-unit property is itself the rentable unit — create it inline.
+  if (unitType === "SINGLE") {
+    await db.unit.create({
+      data: {
+        propertyId: property.id,
+        label: name,
+        beds: Number(formData.get("beds") ?? 1) || 1,
+        baths: Number(formData.get("baths") ?? 1) || 1,
+        sqft: Number(formData.get("sqft") ?? 0) || null,
+        rent: Number(formData.get("marketRent") ?? 0) || 0,
+        deposit: Number(formData.get("deposit") ?? 0) || 0,
+        status: "VACANT",
+      },
+    });
+  }
+
+  revalidatePath("/portfolio");
+  revalidatePath("/dashboard");
+  redirect(`/portfolio/${property.id}`);
+}
+
 export async function addUnit(formData: FormData) {
   await requireRole("LANDLORD");
 

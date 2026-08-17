@@ -120,16 +120,27 @@ model User {
 }
 
 model Property {
-  id         String   @id @default(cuid())
-  name       String
-  address    String
-  city       String
-  state      String
-  zip        String
-  type       String   @default("Apartment")
-  imageUrl   String?
-  landlordId String
-  createdAt  DateTime @default(now())
+  id                  String   @id @default(cuid())
+  name                String
+  address             String
+  city                String
+  state               String
+  zip                 String
+  country             String   @default("United States")
+  type                String   @default("Apartment")
+  unitType            String   @default("SINGLE") // SINGLE | MULTI
+  yearBuilt           Int?
+  mls                 String?
+  isMobileHome        Boolean  @default(false)
+  isAffordableHousing Boolean  @default(false)
+  parking             String?
+  laundry             String?
+  airConditioning     String?
+  features            String[] @default([])
+  amenities           String[] @default([])
+  imageUrl            String?
+  landlordId          String
+  createdAt           DateTime @default(now())
 
   landlord    User         @relation("LandlordProperties", fields: [landlordId], references: [id], onDelete: Cascade)
   units       Unit[]
@@ -145,6 +156,7 @@ model Unit {
   baths      Float      @default(1)
   sqft       Int?
   rent       Float      @default(0)
+  deposit    Float      @default(0)
   status     UnitStatus @default(VACANT)
   propertyId String
 
