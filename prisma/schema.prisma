@@ -196,9 +196,26 @@ model Lease {
   status        LeaseStatus @default(ACTIVE)
   createdAt     DateTime    @default(now())
 
-  unit     Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  tenant   User      @relation("TenantLeases", fields: [tenantId], references: [id], onDelete: Cascade)
-  invoices Invoice[]
+  unit      Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenant    User               @relation("TenantLeases", fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+  recurring RecurringInvoice[]
+}
+
+model RecurringInvoice {
+  id        String    @id @default(cuid())
+  leaseId   String
+  category  String    @default("Rent")
+  amount    Float
+  frequency String    @default("MONTHLY")
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+  nextDate  DateTime
+  status    String    @default("ACTIVE") // ACTIVE | ENDED
+  details   String?
+  createdAt DateTime  @default(now())
+
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {

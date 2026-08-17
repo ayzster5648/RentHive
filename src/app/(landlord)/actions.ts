@@ -358,6 +358,45 @@ export async function createExpense(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+// --- Recurring invoices ---
+export async function postNextRecurringInvoice(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const rec = await db.recurringInvoice.findUnique({ where: { id } });
+  if (!rec || rec.status !== "ACTIVE") throw new Error("Recurring schedule not found or ended.");
+
+  await db.invoice.create({
+    data: {
+      leaseId: rec.leaseId,
+      type: "RENT",
+      amount: rec.amount,
+      dueDate: rec.nextDate,
+      status: "DUE",
+      memo: rec.details ?? rec.category,
+    },
+  });
+
+  // Advance nextDate by the frequency (monthly).
+  const next = new Date(rec.nextDate);
+  next.setMonth(next.getMonth() + 1);
+  const ended = rec.endDate && next > new Date(rec.endDate);
+  await db.recurringInvoice.update({
+    where: { id },
+    data: { nextDate: next, status: ended ? "ENDED" : "ACTIVE" },
+  });
+
+  revalidatePath("/revenues");
+  revalidatePath(`/revenues/recurring/${id}`);
+}
+
+export async function endRecurring(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  await db.recurringInvoice.update({ where: { id }, data: { status: "ENDED" } });
+  revalidatePath("/revenues");
+  revalidatePath(`/revenues/recurring/${id}`);
+}
+
 // --- Record income (full form) ---
 export async function createIncome(formData: FormData) {
   const user = await requireRole("LANDLORD");
