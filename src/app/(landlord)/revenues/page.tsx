@@ -1,10 +1,23 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PageHeader, StatCard, Badge, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { Icons } from "@/components/icons";
 import { RecordPaymentButton } from "./RecordPaymentButton";
 import { GenerateRentButton } from "./GenerateRentButton";
+
+type Row = {
+  id: string;
+  status: string;
+  dueDate: Date;
+  category: string;
+  where: string;
+  contact: string;
+  amount: number;
+  invoiceId?: string; // present when it's a payable invoice
+};
 
 export default async function RevenuesPage({
   searchParams,
@@ -19,21 +32,51 @@ export default async function RevenuesPage({
     include: { lease: { include: { tenant: true, unit: true } } },
     orderBy: { dueDate: "desc" },
   });
+  const incomes = await db.income.findMany({
+    where: { landlordId: user.id },
+    include: { property: true },
+    orderBy: { dueDate: "desc" },
+  });
+
+  const rows: Row[] = [
+    ...invoices.map((i) => ({
+      id: "inv-" + i.id,
+      status: i.status,
+      dueDate: i.dueDate,
+      category: i.type,
+      where: i.lease.unit.label,
+      contact: i.lease.tenant.name,
+      amount: i.amount,
+      invoiceId: i.id,
+    })),
+    ...incomes.map((i) => ({
+      id: "inc-" + i.id,
+      status: i.status,
+      dueDate: i.dueDate,
+      category: i.subcategory ?? i.category,
+      where: i.property?.name ?? "General",
+      contact: i.payer ?? "—",
+      amount: i.amount,
+    })),
+  ].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const collected = (
+  const collectedPayments = (
     await db.payment.findMany({ where: { paidAt: { gte: monthStart }, invoice: { lease: { unit: { property: { landlordId: user.id } } } } } })
   ).reduce((s, p) => s + p.amount, 0);
-  const paidTotal = invoices.filter((i) => i.status === "PAID").reduce((s, i) => s + i.amount, 0);
-  const outstanding = invoices.filter((i) => i.status === "DUE" || i.status === "PARTIAL").reduce((s, i) => s + i.amount, 0);
-  const overdue = invoices.filter((i) => i.status === "OVERDUE").reduce((s, i) => s + i.amount, 0);
+  const collectedIncome = incomes.filter((i) => i.status === "PAID" && new Date(i.createdAt) >= monthStart).reduce((s, i) => s + i.amount, 0);
+  const collected = collectedPayments + collectedIncome;
 
-  const filtered = invoices.filter((i) => {
+  const paidTotal = rows.filter((r) => r.status === "PAID").reduce((s, r) => s + r.amount, 0);
+  const outstanding = rows.filter((r) => r.status === "DUE" || r.status === "PARTIAL").reduce((s, r) => s + r.amount, 0);
+  const overdue = rows.filter((r) => r.status === "OVERDUE").reduce((s, r) => s + r.amount, 0);
+
+  const filtered = rows.filter((r) => {
     if (tab === "all") return true;
-    if (tab === "open") return i.status === "DUE" || i.status === "PARTIAL";
-    if (tab === "overdue") return i.status === "OVERDUE";
-    if (tab === "paid") return i.status === "PAID";
+    if (tab === "open") return r.status === "DUE" || r.status === "PARTIAL";
+    if (tab === "overdue") return r.status === "OVERDUE";
+    if (tab === "paid") return r.status === "PAID";
     return true;
   });
 
@@ -46,7 +89,16 @@ export default async function RevenuesPage({
 
   return (
     <div>
-      <PageHeader title="Revenues" subtitle="Money in — rent invoices and payments." action={<GenerateRentButton />} />
+      <PageHeader
+        title="Revenues"
+        subtitle="Money in — rent invoices and recorded income."
+        action={
+          <div className="flex gap-2">
+            <GenerateRentButton />
+            <Link href="/revenues/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Record income</Link>
+          </div>
+        }
+      />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <StatCard label="Collected this month" value={formatCurrency(collected)} accent="green" />
@@ -58,7 +110,7 @@ export default async function RevenuesPage({
       <Tabs tabs={tabs} active={tab} />
 
       {filtered.length === 0 ? (
-        <EmptyState title="No invoices here" />
+        <EmptyState title="No income here" hint="Rent invoices and anything you record show up here." />
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
@@ -74,15 +126,17 @@ export default async function RevenuesPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3"><Badge status={inv.status} /></td>
-                  <td className="px-5 py-3 text-gray-600">{formatDate(inv.dueDate)}</td>
-                  <td className="px-5 py-3 text-gray-500">{inv.type}</td>
-                  <td className="px-5 py-3 text-gray-600">{inv.lease.unit.label}</td>
-                  <td className="px-5 py-3 font-medium text-gray-900">{inv.lease.tenant.name}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-green-700">+{formatCurrency(inv.amount)}</td>
-                  <td className="px-5 py-3 text-right">{inv.status !== "PAID" && inv.status !== "VOID" && <RecordPaymentButton invoiceId={inv.id} />}</td>
+              {filtered.map((r) => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3"><Badge status={r.status} /></td>
+                  <td className="px-5 py-3 text-gray-600">{formatDate(r.dueDate)}</td>
+                  <td className="px-5 py-3 text-gray-500">{r.category}</td>
+                  <td className="px-5 py-3 text-gray-600">{r.where}</td>
+                  <td className="px-5 py-3 font-medium text-gray-900">{r.contact}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-green-700">+{formatCurrency(r.amount)}</td>
+                  <td className="px-5 py-3 text-right">
+                    {r.invoiceId && r.status !== "PAID" && r.status !== "VOID" && <RecordPaymentButton invoiceId={r.invoiceId} />}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PageHeader, StatCard, Badge, EmptyState } from "@/components/ui";
-import { AddExpenseButton } from "./AddExpenseButton";
+import { Icons } from "@/components/icons";
 
 export default async function ExpensesPage() {
   const user = await requireRole("LANDLORD");
@@ -12,7 +13,6 @@ export default async function ExpensesPage() {
     include: { property: true },
     orderBy: { date: "desc" },
   });
-  const properties = await db.property.findMany({ where: { landlordId: user.id }, select: { id: true, name: true } });
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -22,7 +22,11 @@ export default async function ExpensesPage() {
 
   return (
     <div>
-      <PageHeader title="Expenses" subtitle="Money out — track property costs." action={<AddExpenseButton properties={properties} />} />
+      <PageHeader
+        title="Expenses"
+        subtitle="Money out — track property costs."
+        action={<Link href="/expenses/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Record expense</Link>}
+      />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="This month" value={formatCurrency(thisMonth)} accent="red" />

@@ -358,6 +358,69 @@ export async function createExpense(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+// --- Record income (full form) ---
+export async function createIncome(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const amount = Number(formData.get("amount") ?? 0);
+  if (!amount) throw new Error("Amount is required.");
+
+  const [category, subcategory] = String(formData.get("categoryPath") ?? "Rent").split(" / ");
+  const scope = String(formData.get("scope") ?? "PROPERTY");
+  const tags = String(formData.get("tags") ?? "").trim();
+  const detailsRaw = String(formData.get("details") ?? "").trim();
+  const details = [detailsRaw, tags ? `Tags: ${tags}` : ""].filter(Boolean).join(" · ") || null;
+
+  await db.income.create({
+    data: {
+      landlordId: user.id,
+      scope,
+      category: category ?? "Rent",
+      subcategory: subcategory ?? null,
+      propertyId: scope === "PROPERTY" ? String(formData.get("propertyId") ?? "") || null : null,
+      payer: String(formData.get("payer") ?? "").trim() || null,
+      amount,
+      dueDate: new Date(String(formData.get("dueDate") || new Date().toISOString().slice(0, 10))),
+      status: formData.get("markPaid") === "on" ? "PAID" : "DUE",
+      details,
+    },
+  });
+
+  revalidatePath("/revenues");
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  redirect("/revenues");
+}
+
+// --- Record expense (full form) ---
+export async function createExpenseFull(formData: FormData) {
+  await requireRole("LANDLORD");
+  const amount = Number(formData.get("amount") ?? 0);
+  if (!amount) throw new Error("Amount is required.");
+
+  const [category, subcategory] = String(formData.get("categoryPath") ?? "Repairs").split(" / ");
+  const scope = String(formData.get("scope") ?? "PROPERTY");
+  const tags = String(formData.get("tags") ?? "").trim();
+  const detailsRaw = String(formData.get("details") ?? "").trim();
+  const memo = [detailsRaw, tags ? `Tags: ${tags}` : ""].filter(Boolean).join(" · ") || null;
+
+  await db.expense.create({
+    data: {
+      amount,
+      category: subcategory ? `${category} / ${subcategory}` : category,
+      vendor: String(formData.get("payee") ?? "").trim() || null,
+      memo,
+      propertyId: scope === "PROPERTY" ? String(formData.get("propertyId") ?? "") || null : null,
+      status: formData.get("markPaid") === "on" ? "PAID" : "OPEN",
+      date: new Date(String(formData.get("dueDate") || new Date().toISOString().slice(0, 10))),
+    },
+  });
+
+  revalidatePath("/expenses");
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  redirect("/expenses");
+}
+
 // --- Listings ---
 export async function createListing(formData: FormData) {
   await requireRole("LANDLORD");

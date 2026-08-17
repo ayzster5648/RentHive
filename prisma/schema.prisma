@@ -145,8 +145,26 @@ model Property {
   landlord    User         @relation("LandlordProperties", fields: [landlordId], references: [id], onDelete: Cascade)
   units       Unit[]
   expenses    Expense[]
+  incomes     Income[]
   inspections Inspection[]
   documents   Document[]
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  landlordId  String
+  scope       String   @default("PROPERTY") // PROPERTY | GENERAL
+  category    String   @default("Rent")
+  subcategory String?
+  propertyId  String?
+  payer       String?
+  amount      Float
+  dueDate     DateTime @default(now())
+  status      String   @default("DUE") // DUE | PAID
+  details     String?
+  createdAt   DateTime @default(now())
+
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 }
 
 model Unit {

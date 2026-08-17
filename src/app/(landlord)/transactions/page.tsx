@@ -31,6 +31,10 @@ export default async function TransactionsPage({
     where: { OR: [{ property: { landlordId: user.id } }, { propertyId: null }] },
     include: { property: true },
   });
+  const incomes = await db.income.findMany({
+    where: { landlordId: user.id },
+    include: { property: true },
+  });
 
   const rows: Row[] = [
     ...invoices.map((i) => ({
@@ -40,6 +44,16 @@ export default async function TransactionsPage({
       category: i.type,
       property: `${i.lease.unit.property.name} · ${i.lease.unit.label}`,
       contact: i.lease.tenant.name,
+      amount: i.amount,
+      status: i.status,
+    })),
+    ...incomes.map((i) => ({
+      id: "inc-" + i.id,
+      date: i.dueDate,
+      direction: "IN" as const,
+      category: i.subcategory ?? i.category,
+      property: i.property?.name ?? "General",
+      contact: i.payer ?? "—",
       amount: i.amount,
       status: i.status,
     })),

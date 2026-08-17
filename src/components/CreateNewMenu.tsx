@@ -9,8 +9,8 @@ const actions = [
   { label: "Invite to apply", href: "/listings?tab=applications" },
   { label: "Screen a tenant", href: "/listings?tab=screenings" },
   { label: "Create new property", href: "/portfolio/new" },
-  { label: "Record income", href: "/revenues" },
-  { label: "Record expense", href: "/expenses?new=1" },
+  { label: "Record income", href: "/revenues/new" },
+  { label: "Record expense", href: "/expenses/new" },
   { label: "Record a request", href: "/maintenance?new=1" },
 ];
 
