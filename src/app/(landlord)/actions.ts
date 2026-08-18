@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireRole, hashPassword } from "@/lib/auth";
-import { nextDueDate } from "@/lib/utils";
+import { nextDueDate, formatCurrency } from "@/lib/utils";
 
 export async function createProperty(formData: FormData) {
   const user = await requireRole("LANDLORD");
@@ -246,6 +246,47 @@ export async function completeMoveIn(formData: FormData) {
   revalidatePath("/renters");
   revalidatePath("/dashboard");
   redirect(`/renters/leases/${lease.id}`);
+}
+
+/** Email an overdue-balance reminder to a tenant (simulated unless email is configured). */
+export async function sendBalanceNotice(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const tenantId = String(formData.get("tenantId") ?? "");
+  const tenant = await db.user.findUnique({ where: { id: tenantId } });
+  if (!tenant) throw new Error("Tenant not found.");
+
+  const invoices = await db.invoice.findMany({
+    where: { status: { not: "PAID" }, lease: { tenantId, unit: { property: { landlordId: user.id } } } },
+  });
+  const balance = invoices.reduce((s, i) => s + i.amount, 0);
+
+  const { sendEmail } = await import("@/lib/integrations/notifications");
+  await sendEmail({
+    to: tenant.email,
+    subject: `Rent balance reminder — ${formatCurrency(balance)} due`,
+    body: `Hi ${tenant.name.split(" ")[0]},\n\nOur records show an outstanding balance of ${formatCurrency(balance)}. Please submit payment at your earliest convenience.\n\nThank you.`,
+  });
+  revalidatePath("/renters");
+}
+
+/** Apply a credit toward a tenant's oldest unpaid invoice (records it as a payment). */
+export async function applyCredit(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const tenantId = String(formData.get("tenantId") ?? "");
+  const amount = Number(formData.get("amount") ?? 0);
+  if (!amount || amount <= 0) throw new Error("Enter a credit amount.");
+
+  const oldest = await db.invoice.findFirst({
+    where: { status: { not: "PAID" }, lease: { tenantId, unit: { property: { landlordId: user.id } } } },
+    orderBy: { dueDate: "asc" },
+  });
+  if (!oldest) throw new Error("No open invoice to credit.");
+
+  await db.$transaction([
+    db.payment.create({ data: { invoiceId: oldest.id, amount: Math.min(amount, oldest.amount), method: "Credit" } }),
+    ...(amount >= oldest.amount ? [db.invoice.update({ where: { id: oldest.id }, data: { status: "PAID" as const } })] : []),
+  ]);
+  revalidatePath("/renters");
 }
 
 export async function updateTenant(formData: FormData) {
