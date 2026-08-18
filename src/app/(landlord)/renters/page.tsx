@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { formatCurrency, formatDate, nextDueDate, daysUntil, cn } from "@/lib/utils";
 import { PageHeader, StatCard, Badge, Avatar, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { Icons } from "@/components/icons";
 import { AddTenantButton } from "./AddTenantButton";
 
 export default async function RentersPage({
@@ -42,7 +43,15 @@ export default async function RentersPage({
 
   return (
     <div>
-      <PageHeader title="Renters" action={<AddTenantButton vacantUnits={vacantUnits} />} />
+      <PageHeader
+        title="Renters"
+        action={
+          <div className="flex gap-2">
+            {tab === "leases" && <Link href="/renters/move-in" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Move in</Link>}
+            <AddTenantButton vacantUnits={vacantUnits} />
+          </div>
+        }
+      />
       <Tabs tabs={tabs} active={tab} />
 
       {tab === "leases" && <LeasesTab leases={allLeases} activeCount={activeLeases.length} />}
@@ -55,42 +64,63 @@ export default async function RentersPage({
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function LeasesTab({ leases, activeCount }: { leases: any[]; activeCount: number }) {
-  const expiringSoon = leases.filter((l) => l.status === "ACTIVE" && daysUntil(l.endDate) <= 60 && daysUntil(l.endDate) >= 0).length;
+  const expiringSoon = leases.filter((l) => l.status === "ACTIVE" && daysUntil(l.endDate) <= 30 && daysUntil(l.endDate) >= 0).length;
+  const scheduled = leases.filter((l) => l.status === "PENDING" || (l.status === "ACTIVE" && new Date(l.startDate) > new Date())).length;
+
+  // Group leases by property, most leases first.
+  const groups = new Map<string, { name: string; rows: any[] }>();
+  for (const l of leases) {
+    const g = groups.get(l.property.id) ?? { name: l.property.name, rows: [] as any[] };
+    g.rows.push(l);
+    groups.set(l.property.id, g);
+  }
+  const grouped = [...groups.values()].sort((a, b) => b.rows.length - a.rows.length);
+
   return (
     <div>
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Active leases" value={String(activeCount)} accent="green" />
-        <StatCard label="Expiring in 60 days" value={String(expiringSoon)} accent={expiringSoon ? "amber" : "brand"} />
-        <StatCard label="Total leases" value={String(leases.length)} />
+        <StatCard label="Lease expiration" value={String(expiringSoon)} sub="In the upcoming 30 days" accent={expiringSoon ? "amber" : "brand"} />
+        <StatCard label="Scheduled" value={String(scheduled)} sub="Future leases" />
       </div>
+
       {leases.length === 0 ? (
-        <EmptyState title="No leases yet" hint="Add a tenant to create the first lease." />
+        <EmptyState title="No leases yet" hint="Click “Move in” to create the first lease." />
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Property & unit</th>
-                <th className="px-5 py-3 font-medium">Tenant</th>
-                <th className="px-5 py-3 font-medium">Duration</th>
-                <th className="px-5 py-3 font-medium">Rent & schedule</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {leases.map((l) => (
-                <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`}><Badge status={l.status} /></Link></td>
-                  <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`} className="text-gray-700 hover:text-brand-700">{l.property.name} · {l.unit.label}</Link></td>
-                  <td className="px-5 py-3">
-                    <Link href={`/renters/${l.tenant.id}`} className="font-medium text-brand-700 hover:underline">{l.tenant.name}</Link>
-                  </td>
-                  <td className="px-5 py-3 text-gray-500">{formatDate(l.startDate)} – {formatDate(l.endDate)}</td>
-                  <td className="px-5 py-3 text-gray-900">{formatCurrency(l.rentAmount)}/mo · day {l.rentDueDay}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-6">
+          {grouped.map((g) => (
+            <div key={g.name}>
+              <div className="mb-2 flex items-center gap-2">
+                {Icons.building({ className: "h-4 w-4 text-gray-400" })}
+                <h3 className="font-semibold text-gray-900">{g.name}</h3>
+                <span className="text-sm text-gray-400">({g.rows.length} {g.rows.length === 1 ? "lease" : "leases"})</span>
+              </div>
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Property & unit</th>
+                      <th className="px-5 py-3 font-medium">Tenants</th>
+                      <th className="px-5 py-3 font-medium">Duration</th>
+                      <th className="px-5 py-3 font-medium text-right">Rent & schedule</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {g.rows.map((l) => (
+                      <tr key={l.id} className="hover:bg-gray-50">
+                        <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`}><Badge status={l.status} /></Link></td>
+                        <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`} className="text-gray-700 hover:text-brand-700">{l.property.name}, {l.unit.label}</Link></td>
+                        <td className="px-5 py-3"><Link href={`/renters/${l.tenant.id}`} className="font-medium text-brand-700 hover:underline">{l.tenant.name}</Link></td>
+                        <td className="px-5 py-3 text-gray-500">{formatDate(l.startDate)} – {formatDate(l.endDate)}</td>
+                        <td className="px-5 py-3 text-right text-gray-900">{l.status === "ACTIVE" ? `${formatCurrency(l.rentAmount)}/m` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

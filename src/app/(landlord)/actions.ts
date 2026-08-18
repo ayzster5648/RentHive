@@ -188,6 +188,66 @@ export async function addTenant(formData: FormData) {
   redirect(`/renters/${tenant.id}`);
 }
 
+/** Move In wizard: create/reuse tenant, create the lease + recurring rent + first invoice. */
+export async function completeMoveIn(formData: FormData) {
+  await requireRole("LANDLORD");
+
+  const unitId = String(formData.get("unitId") ?? "");
+  const tenantName = String(formData.get("tenantName") ?? "").trim();
+  const tenantEmail = String(formData.get("tenantEmail") ?? "").trim().toLowerCase();
+  const tenantPhone = String(formData.get("tenantPhone") ?? "").trim() || null;
+  const leaseType = String(formData.get("leaseType") ?? "FIXED");
+  const startDate = new Date(String(formData.get("startDate") || new Date().toISOString().slice(0, 10)));
+  const endRaw = String(formData.get("endDate") || "");
+  const rentAmount = Number(formData.get("rentAmount") ?? 0);
+  const enableRecurring = formData.get("enableRecurring") === "on";
+  const markPaid = formData.get("markPaid") === "on";
+
+  if (!unitId) throw new Error("Select a property and unit.");
+  if (!tenantName || !tenantEmail) throw new Error("Tenant name and email are required.");
+
+  const unit = await db.unit.findUnique({ where: { id: unitId } });
+  if (!unit) throw new Error("Unit not found.");
+
+  // For month-to-month, default the end date a year out.
+  const endDate = endRaw ? new Date(endRaw) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  const dueDay = Math.min(Math.max(startDate.getDate(), 1), 28);
+
+  let tenant = await db.user.findUnique({ where: { email: tenantEmail } });
+  if (tenant) {
+    tenant = await db.user.update({ where: { id: tenant.id }, data: { name: tenantName, phone: tenantPhone, role: "TENANT" } });
+  } else {
+    tenant = await db.user.create({ data: { name: tenantName, email: tenantEmail, phone: tenantPhone, role: "TENANT", password: await hashPassword("password123") } });
+  }
+
+  const lease = await db.lease.create({
+    data: {
+      unitId, tenantId: tenant.id, startDate, endDate,
+      rentAmount: rentAmount || unit.rent, depositAmount: rentAmount || unit.rent,
+      rentDueDay: dueDay, status: "ACTIVE",
+    },
+  });
+
+  await db.unit.update({ where: { id: unitId }, data: { status: "OCCUPIED" } });
+
+  // First rent invoice.
+  await db.invoice.create({
+    data: { leaseId: lease.id, type: "RENT", amount: rentAmount || unit.rent, dueDate: nextDueDate(dueDay, startDate), status: markPaid ? "PAID" : "DUE", memo: "First month's rent" },
+  });
+
+  if (enableRecurring) {
+    const next = new Date(nextDueDate(dueDay, startDate));
+    next.setMonth(next.getMonth() + 1);
+    await db.recurringInvoice.create({
+      data: { leaseId: lease.id, category: "Rent", amount: rentAmount || unit.rent, frequency: "MONTHLY", startDate, endDate: leaseType === "FIXED" ? endDate : null, nextDate: next, status: "ACTIVE", details: "Rent" },
+    });
+  }
+
+  revalidatePath("/renters");
+  revalidatePath("/dashboard");
+  redirect(`/renters/leases/${lease.id}`);
+}
+
 export async function updateTenant(formData: FormData) {
   await requireRole("LANDLORD");
 
