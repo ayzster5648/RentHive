@@ -9,6 +9,7 @@ import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { TaskItem } from "./TaskItem";
 import { AddTaskButton, AddReminderButton } from "./QuickAdd";
 import { SetupChecklist } from "./SetupChecklist";
+import { CustomizeDashboard } from "./CustomizeDashboard";
 
 const reminderColors: Record<string, string> = {
   LEASE: "bg-red-50 text-red-700",
@@ -40,7 +41,7 @@ export default async function DashboardPage({
       <PageHeader title="Dashboard" subtitle={`Welcome back, ${user.name.split(" ")[0]}`} />
       <Tabs tabs={tabs} active={tab} />
 
-      {tab === "overview" && <Overview landlordId={user.id} />}
+      {tab === "overview" && <Overview landlordId={user.id} widgets={user.dashboardWidgets} />}
       {tab === "calendar" && <CalendarTab />}
       {tab === "tasks" && <TasksTab />}
       {tab === "setup" && <SetupTab landlordId={user.id} />}
@@ -48,7 +49,8 @@ export default async function DashboardPage({
   );
 }
 
-async function Overview({ landlordId }: { landlordId: string }) {
+async function Overview({ landlordId, widgets }: { landlordId: string; widgets: string[] }) {
+  const has = (w: string) => widgets.includes(w);
   const propertyIds = (await db.property.findMany({ where: { landlordId }, select: { id: true } })).map((p) => p.id);
   const ownedLease = { unit: { propertyId: { in: propertyIds } } };
 
@@ -85,6 +87,7 @@ async function Overview({ landlordId }: { landlordId: string }) {
 
       {/* Top row: reminders + accounting */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {has("calendar") && (
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Today</h2>
@@ -103,8 +106,10 @@ async function Overview({ landlordId }: { landlordId: string }) {
             </ul>
           )}
         </div>
+        )}
 
         {/* Accounting */}
+        {has("accounting") && (
         <div className="card p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Accounting <span className="text-sm font-normal text-gray-400">· this month</span></h2>
@@ -135,12 +140,25 @@ async function Overview({ landlordId }: { landlordId: string }) {
             </div>
           </div>
         </div>
+        )}
       </div>
 
+      {/* Online payments setup card */}
+      {has("onlinePayments") && (
+        <div className="card flex flex-wrap items-center justify-between gap-4 border-brand-200 bg-brand-50/50 p-5">
+          <div>
+            <h2 className="font-semibold text-gray-900">Set up online payments</h2>
+            <p className="text-sm text-gray-600">Get paid and track your accounts by setting up ACH payments. Est. 4 min setup.</p>
+          </div>
+          <Link href="/settings/integrations" className="btn-primary">Get started</Link>
+        </div>
+      )}
+
       {/* Recently viewed */}
-      <RecentlyViewed />
+      {has("recentlyViewed") && <RecentlyViewed />}
 
       {/* Leases funnel */}
+      {has("leaseFunnel") && (
       <div className="card p-5">
         <h2 className="mb-4 font-semibold text-gray-900">Leases</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -160,9 +178,11 @@ async function Overview({ landlordId }: { landlordId: string }) {
           ))}
         </div>
       </div>
+      )}
 
       {/* Overdue + Maintenance + Applicants */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {has("overdueInvoices") && (
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Overdue rent</h2>
@@ -190,8 +210,10 @@ async function Overview({ landlordId }: { landlordId: string }) {
             </ul>
           )}
         </div>
+        )}
 
         <div className="space-y-6">
+          {has("maintenance") && (
           <div className="card p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900">Maintenance</h2>
@@ -213,7 +235,9 @@ async function Overview({ landlordId }: { landlordId: string }) {
               </ul>
             )}
           </div>
+          )}
 
+          {has("applications") && (
           <Link href="/listings?tab=applications" className="card flex items-center justify-between p-5 transition-shadow hover:shadow-md">
             <div>
               <h2 className="font-semibold text-gray-900">Manage applicants</h2>
@@ -221,7 +245,12 @@ async function Overview({ landlordId }: { landlordId: string }) {
             </div>
             {newApplications > 0 && <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-brand-600 px-2 text-sm font-semibold text-white">{newApplications}</span>}
           </Link>
+          )}
         </div>
+      </div>
+
+      <div className="pt-2 text-center">
+        <CustomizeDashboard selected={widgets} />
       </div>
     </div>
   );

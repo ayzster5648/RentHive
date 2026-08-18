@@ -111,6 +111,7 @@ model User {
   notifyApplications Boolean  @default(true)
   notifyMaintenance  Boolean  @default(true)
   notifyInspections  Boolean  @default(true)
+  dashboardWidgets   String[] @default(["calendar", "recentlyViewed", "leaseFunnel", "accounting", "applications", "onlinePayments", "maintenance", "overdueInvoices"])
   createdAt          DateTime @default(now())
 
   // A landlord owns properties; a tenant holds leases.

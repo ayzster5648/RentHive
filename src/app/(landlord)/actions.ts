@@ -659,6 +659,13 @@ export async function createDocument(formData: FormData) {
 }
 
 // --- Tasks & reminders ---
+export async function saveDashboardWidgets(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const widgets = formData.getAll("widgets").map(String);
+  await db.user.update({ where: { id: user.id }, data: { dashboardWidgets: widgets } });
+  revalidatePath("/dashboard");
+}
+
 export async function createTask(formData: FormData) {
   await requireRole("LANDLORD");
   const title = String(formData.get("title") ?? "").trim();
