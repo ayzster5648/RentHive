@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/Modal";
-import { createMaintenanceRequestLandlord, createServicePro, assignServicePro } from "../actions";
+import { createMaintenanceRequestLandlord, createServicePro, assignServicePro, createRecurringMaintenance } from "../actions";
 
 type Unit = { id: string; label: string; propertyName: string };
 type Pro = { id: string; name: string };
@@ -106,3 +106,48 @@ export function AssignProControl({ id, assigneeId, pros }: { id: string; assigne
     </form>
   );
 }
+
+export function AddRecurringButton({ units, pros }: { units: Unit[]; pros: Pro[] }) {
+  return (
+    <Modal trigger={{ label: "Add recurring request", icon: true }} title="Add a recurring maintenance request">
+      {(close) => (
+        <form action={async (fd) => { await createRecurringMaintenance(fd); close(); }} className="space-y-3">
+          <div>
+            <label className="label">Unit</label>
+            <select name="unitId" className="input" required defaultValue={units[0]?.id}>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.propertyName} — {u.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Title</label>
+            <input name="title" className="input" placeholder="Quarterly HVAC filter change" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Category</label>
+              <select name="category" className="input">{categories.map((c) => <option key={c}>{c}</option>)}</select>
+            </div>
+            <div>
+              <label className="label">Priority</label>
+              <select name="priority" className="input" defaultValue="LOW">
+                <option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="URGENT">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Assign service pro (optional)</label>
+            <select name="assigneeId" className="input">
+              <option value="">— Unassigned —</option>
+              {pros.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={close} className="btn-secondary">Cancel</button>
+            <button type="submit" className="btn-primary">Add recurring request</button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+

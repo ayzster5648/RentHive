@@ -31,11 +31,13 @@ export function MoneyForm({
   action,
   properties,
   contacts,
+  defaultPayee,
 }: {
   kind: "income" | "expense";
   action: (fd: FormData) => Promise<void>;
   properties: Option[];
   contacts: Option[];
+  defaultPayee?: string;
 }) {
   const isIncome = kind === "income";
   const [scope, setScope] = useState<"PROPERTY" | "GENERAL">("PROPERTY");
@@ -120,7 +122,7 @@ export function MoneyForm({
 
           <div>
             <label className="label">{contactLabel} {isIncome && <span className="text-red-500">*</span>}</label>
-            <input name={isIncome ? "payer" : "payee"} className="input" list="contacts" placeholder={isIncome ? "Who paid" : "Vendor / payee"} required={isIncome} />
+            <input name={isIncome ? "payer" : "payee"} className="input" list="contacts" placeholder={isIncome ? "Who paid" : "Vendor / payee"} defaultValue={defaultPayee} required={isIncome} />
             <datalist id="contacts">
               {contacts.map((c) => <option key={c.id} value={c.label} />)}
             </datalist>

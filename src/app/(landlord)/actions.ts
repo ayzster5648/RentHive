@@ -312,6 +312,21 @@ export async function createMaintenanceRequestLandlord(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+// Plain-argument actions used by the drag-and-drop board.
+export async function setMaintenanceStatus(id: string, status: "OPEN" | "IN_PROGRESS" | "RESOLVED") {
+  await requireRole("LANDLORD");
+  if (!id || !["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) return;
+  await db.maintenanceRequest.update({ where: { id }, data: { status } });
+  revalidatePath("/maintenance");
+}
+
+export async function setMaintenanceAssignee(id: string, assigneeId: string | null) {
+  await requireRole("LANDLORD");
+  if (!id) return;
+  await db.maintenanceRequest.update({ where: { id }, data: { assigneeId: assigneeId || null } });
+  revalidatePath("/maintenance");
+}
+
 export async function assignServicePro(formData: FormData) {
   await requireRole("LANDLORD");
   const id = String(formData.get("id") ?? "");
@@ -332,6 +347,92 @@ export async function createServicePro(formData: FormData) {
       category: String(formData.get("category") ?? "General").trim(),
       phone: String(formData.get("phone") ?? "").trim() || null,
       email: String(formData.get("email") ?? "").trim() || null,
+    },
+  });
+  revalidatePath("/maintenance");
+}
+
+function serviceProData(formData: FormData) {
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
+  const company = String(formData.get("company") ?? "").trim() || null;
+  const displayAsCompany = formData.get("displayAsCompany") === "on";
+  const name = displayAsCompany && company ? company : [firstName, lastName].filter(Boolean).join(" ");
+  return {
+    name: name || firstName || "Service Pro",
+    firstName: firstName || null,
+    lastName: lastName || null,
+    middleName: String(formData.get("middleName") ?? "").trim() || null,
+    company,
+    displayAsCompany,
+    website: String(formData.get("website") ?? "").trim() || null,
+    category: String(formData.get("category") ?? "General").trim() || "General",
+    subcategory: String(formData.get("subcategory") ?? "").trim() || null,
+    phone: String(formData.get("phone") ?? "").trim() || null,
+    additionalPhone: String(formData.get("additionalPhone") ?? "").trim() || null,
+    fax: String(formData.get("fax") ?? "").trim() || null,
+    email: String(formData.get("email") ?? "").trim() || null,
+    additionalEmail: String(formData.get("additionalEmail") ?? "").trim() || null,
+    address: String(formData.get("address") ?? "").trim() || null,
+    city: String(formData.get("city") ?? "").trim() || null,
+    state: String(formData.get("state") ?? "").trim() || null,
+    zip: String(formData.get("zip") ?? "").trim() || null,
+    country: String(formData.get("country") ?? "").trim() || null,
+  };
+}
+
+export async function createServiceProFull(formData: FormData) {
+  await requireRole("LANDLORD");
+  const data = serviceProData(formData);
+  if (!data.firstName && !data.company) throw new Error("First name is required.");
+  await db.servicePro.create({ data });
+  revalidatePath("/maintenance");
+  redirect("/maintenance?tab=pros");
+}
+
+export async function updateServiceProFull(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  if (!id) throw new Error("Missing service pro.");
+  await db.servicePro.update({ where: { id }, data: serviceProData(formData) });
+  revalidatePath("/maintenance");
+  revalidatePath(`/maintenance/pros/${id}`);
+  redirect(`/maintenance/pros/${id}`);
+}
+
+export async function archiveServicePro(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const pro = await db.servicePro.findUnique({ where: { id } });
+  if (pro) await db.servicePro.update({ where: { id }, data: { archived: !pro.archived } });
+  revalidatePath("/maintenance");
+}
+
+export async function deleteServicePro(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  if (id) await db.servicePro.delete({ where: { id } });
+  revalidatePath("/maintenance");
+}
+
+export async function createRecurringMaintenance(formData: FormData) {
+  await requireRole("LANDLORD");
+  const user = await requireRole("LANDLORD");
+  const unitId = String(formData.get("unitId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  if (!unitId || !title) throw new Error("Unit and title are required.");
+  const unit = await db.unit.findUnique({ where: { id: unitId }, include: { leases: { where: { status: "ACTIVE" } } } });
+  await db.maintenanceRequest.create({
+    data: {
+      unitId,
+      tenantId: unit?.leases[0]?.tenantId ?? user.id,
+      title,
+      description: String(formData.get("description") ?? "").trim() || title,
+      category: String(formData.get("category") ?? "General").trim(),
+      priority: (String(formData.get("priority") ?? "MEDIUM")) as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
+      recurring: true,
+      assigneeId: String(formData.get("assigneeId") ?? "") || null,
+      status: "OPEN",
     },
   });
   revalidatePath("/maintenance");

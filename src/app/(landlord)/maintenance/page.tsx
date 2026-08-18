@@ -1,46 +1,63 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { PageHeader, StatCard, Badge, Avatar, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { Icons } from "@/components/icons";
 import { StatusControl } from "./StatusControl";
-import { AddRequestButton, AddServiceProButton, AssignProControl } from "./MaintenanceButtons";
+import { AddRequestButton, AssignProControl, AddRecurringButton } from "./MaintenanceButtons";
+import { KanbanBoard } from "./KanbanBoard";
+import { ProMenu } from "./ProMenu";
 
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; property?: string }>;
 }) {
-  const { tab = "requests" } = await searchParams;
+  const { tab = "requests", property } = await searchParams;
   const user = await requireRole("LANDLORD");
 
+  const propFilter = property ? { property: { id: property, landlordId: user.id } } : { property: { landlordId: user.id } };
+  const propertyName = property ? (await db.property.findUnique({ where: { id: property } }))?.name : undefined;
+
   const requests = await db.maintenanceRequest.findMany({
-    where: { unit: { property: { landlordId: user.id } } },
+    where: { unit: propFilter },
     include: { tenant: true, assignee: true, unit: { include: { property: true } } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
-  const pros = await db.servicePro.findMany({ orderBy: { name: "asc" } });
+  const pros = await db.servicePro.findMany({ orderBy: [{ archived: "asc" }, { name: "asc" }] });
   const units = await db.unit.findMany({ where: { property: { landlordId: user.id } }, include: { property: true }, orderBy: { label: "asc" } });
 
   const unitOptions = units.map((u) => ({ id: u.id, label: u.label, propertyName: u.property.name }));
-  const proOptions = pros.map((p) => ({ id: p.id, name: p.name }));
+  const proOptions = pros.filter((p) => !p.archived).map((p) => ({ id: p.id, name: p.name }));
+  const qp = (t: string) => `/maintenance?tab=${t}${property ? `&property=${property}` : ""}`;
 
   const tabs = [
-    { key: "requests", label: "Requests", href: "/maintenance", badge: String(requests.filter((r) => r.status !== "RESOLVED").length) },
-    { key: "board", label: "Requests Board", href: "/maintenance?tab=board" },
-    { key: "recurring", label: "Recurring", href: "/maintenance?tab=recurring" },
-    { key: "pros", label: "Service Pros", href: "/maintenance?tab=pros", badge: String(pros.length) },
+    { key: "requests", label: "Requests", href: property ? qp("requests").replace("?tab=requests", `?property=${property}`) : "/maintenance", badge: String(requests.filter((r) => r.status !== "RESOLVED").length) },
+    { key: "board", label: "Requests Board", href: qp("board") },
+    { key: "recurring", label: "Recurring", href: qp("recurring") },
+    { key: "pros", label: "Service Pros", href: qp("pros"), badge: String(pros.length) },
   ];
 
-  const action = tab === "pros" ? <AddServiceProButton /> : <AddRequestButton units={unitOptions} pros={proOptions} />;
+  const action =
+    tab === "pros" ? <Link href="/maintenance/pros/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Add service pro</Link>
+    : tab === "recurring" ? <AddRecurringButton units={unitOptions} pros={proOptions} />
+    : <AddRequestButton units={unitOptions} pros={proOptions} />;
 
   return (
     <div>
-      <PageHeader title="Maintenance" action={action} />
+      <PageHeader title={propertyName ? `Maintenance · ${propertyName}` : "Maintenance"} action={action} />
       <Tabs tabs={tabs} active={tab} />
 
       {tab === "requests" && <RequestsTab requests={requests} pros={proOptions} />}
-      {tab === "board" && <BoardTab requests={requests} />}
+      {tab === "board" && (
+        requests.length === 0 ? <EmptyState title="No requests to organize" hint="Add a request and it'll show on the board." /> :
+        <KanbanBoard
+          pros={proOptions}
+          initial={requests.map((r) => ({ id: r.id, title: r.title, category: r.category, priority: r.priority, status: r.status, unitLabel: r.unit.label, propertyName: r.unit.property.name, assigneeId: r.assigneeId }))}
+        />
+      )}
       {tab === "recurring" && <RecurringTab requests={requests.filter((r) => r.recurring)} />}
       {tab === "pros" && <ProsTab pros={pros} requests={requests} />}
     </div>
@@ -60,7 +77,7 @@ function RequestsTab({ requests, pros }: { requests: any[]; pros: { id: string; 
         <StatCard label="Resolved" value={String(resolved)} accent="green" />
       </div>
       {requests.length === 0 ? (
-        <EmptyState title="No maintenance requests" hint="Tenant- and landlord-submitted requests show here." />
+        <EmptyState title="No results found" hint="Please modify your search criteria and try again." />
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (
@@ -89,59 +106,25 @@ function RequestsTab({ requests, pros }: { requests: any[]; pros: { id: string; 
   );
 }
 
-function BoardTab({ requests }: { requests: any[] }) {
-  const columns = [
-    { key: "OPEN", label: "Open", color: "border-t-blue-400" },
-    { key: "IN_PROGRESS", label: "In Progress", color: "border-t-amber-400" },
-    { key: "RESOLVED", label: "Resolved", color: "border-t-green-400" },
-  ];
-  return (
-    <div>
-      <p className="mb-4 text-sm text-gray-500">Visualize all maintenance work in one place, organized by status.</p>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {columns.map((col) => {
-          const items = requests.filter((r) => r.status === col.key);
-          return (
-            <div key={col.key} className={cn("rounded-xl border border-gray-200 border-t-4 bg-gray-50 p-3", col.color)}>
-              <div className="mb-3 flex items-center justify-between px-1">
-                <h3 className="text-sm font-semibold text-gray-700">{col.label}</h3>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-500">{items.length}</span>
-              </div>
-              <div className="space-y-2">
-                {items.map((r) => (
-                  <div key={r.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                      <Badge status={r.priority} />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">{r.unit.label} · {r.category}</p>
-                    {r.assignee && <p className="mt-1 text-xs text-brand-600">{r.assignee.name}</p>}
-                  </div>
-                ))}
-                {items.length === 0 && <p className="px-1 py-4 text-center text-xs text-gray-400">Nothing here</p>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function RecurringTab({ requests }: { requests: any[] }) {
-  if (requests.length === 0) return <EmptyState title="No recurring tasks" hint="Mark a request as recurring to schedule repeat maintenance." />;
   return (
-    <div className="space-y-3">
-      {requests.map((r) => (
-        <div key={r.id} className="card flex items-center justify-between p-4">
-          <div>
-            <p className="font-medium text-gray-900">{r.title}</p>
-            <p className="text-xs text-gray-400">{r.unit.property.name} · {r.unit.label} · {r.category}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">Recurring</span>
-            <Badge status={r.status} />
-          </div>
+    <div className="card overflow-hidden">
+      <div className="grid grid-cols-[100px_80px_1fr_1.4fr_140px] gap-4 border-b border-gray-100 px-5 py-3 text-xs font-medium uppercase tracking-wide text-gray-400">
+        <span>Status</span><span>ID</span><span>Category</span><span>Property &amp; unit</span><span>Duration</span>
+      </div>
+      {requests.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+          {Icons.reports({ className: "h-8 w-8" })}
+          <p className="mt-2 font-medium text-gray-500">No recurring requests</p>
+          <p className="text-sm">There are no recurring requests on this page.</p>
+        </div>
+      ) : requests.map((r, i) => (
+        <div key={r.id} className="grid grid-cols-[100px_80px_1fr_1.4fr_140px] gap-4 px-5 py-3 text-sm hover:bg-gray-50">
+          <Badge status={r.status} />
+          <span className="text-gray-400">#{String(1000 + i)}</span>
+          <span className="text-gray-700">{r.category}</span>
+          <span className="text-gray-600">{r.unit.property.name}, {r.unit.label}</span>
+          <span className="text-gray-500">Monthly</span>
         </div>
       ))}
     </div>
@@ -149,21 +132,30 @@ function RecurringTab({ requests }: { requests: any[] }) {
 }
 
 function ProsTab({ pros, requests }: { pros: any[]; requests: any[] }) {
-  if (pros.length === 0) return <EmptyState title="No service pros yet" hint="Add vendors you work with to assign them to requests." />;
+  if (pros.length === 0) return <EmptyState title="No service pros yet" hint="Click “Add service pro” to add a vendor you work with." />;
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {pros.map((p) => {
         const assigned = requests.filter((r) => r.assigneeId === p.id).length;
         return (
           <div key={p.id} className="card p-5 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-semibold text-brand-700">
-              {p.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-gray-300">{Icons.renters({ className: "h-4 w-4" })}</span>
+              <div className="flex items-center gap-1 text-gray-300">
+                {Icons.chat({ className: "h-4 w-4" })}
+                <ProMenu id={p.id} archived={p.archived} />
+              </div>
             </div>
-            <p className="font-semibold text-gray-900">{p.name}</p>
-            {p.phone && <p className="text-xs text-brand-600">{p.phone}</p>}
-            <p className="mt-2 text-xs text-gray-500">{p.category}</p>
-            {p.company && <p className="text-xs text-gray-400">{p.company}</p>}
-            <p className="mt-2 rounded bg-gray-50 px-2 py-1 text-xs text-gray-500">{assigned} assigned job{assigned !== 1 ? "s" : ""}</p>
+            <Link href={`/maintenance/pros/${p.id}`}>
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-400 text-xl font-semibold text-white">
+                {p.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+              </div>
+              <p className="font-semibold text-gray-900">{p.name}{p.archived && <span className="ml-1 text-xs text-gray-400">(archived)</span>}</p>
+            </Link>
+            {p.phone && <p className="text-xs text-brand-600 underline">{p.phone}</p>}
+            <p className="mt-2 text-sm text-gray-500">{p.subcategory ?? p.category}</p>
+            <p className="mt-1 text-xs text-gray-400">{assigned} assigned job{assigned !== 1 ? "s" : ""}</p>
+            <Link href={`/maintenance/pros/${p.id}`} className="mt-3 block border-t border-gray-100 pt-3 text-sm font-medium text-brand-600 hover:underline">View profile</Link>
           </div>
         );
       })}
