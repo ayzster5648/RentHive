@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PageHeader, Badge, Avatar, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { Icons } from "@/components/icons";
-import { AddListingButton, AddApplicantButton, ApplicantStageControl } from "./ListingButtons";
+import { AddApplicantButton, ApplicantStageControl } from "./ListingButtons";
 
 const stageForTab: Record<string, "LEAD" | "APPLICATION" | "SCREENING"> = {
   leads: "LEAD",
@@ -43,8 +44,9 @@ export default async function ListingsPage({
     { key: "screenings", label: "Screenings", href: "/listings?tab=screenings", badge: String(countFor("SCREENING")) },
   ];
 
+  void unitOptions;
   const action = tab === "listings"
-    ? <AddListingButton units={unitOptions} />
+    ? <Link href="/listings/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Add listing</Link>
     : <AddApplicantButton listings={listingOptions} stage={stageForTab[tab] ?? "LEAD"} />;
 
   return (
@@ -56,27 +58,36 @@ export default async function ListingsPage({
         listings.length === 0 ? (
           <EmptyState title="No active listings" hint="List a vacant unit to start collecting applications." />
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {listings.map((l) => (
               <div key={l.id} className="card overflow-hidden">
-                <div className="flex h-32 items-center justify-center bg-brand-50">
-                  {l.unit.property.imageUrl ? (
+                <div className="relative flex h-40 items-center justify-center bg-brand-50">
+                  {(l.coverPhotoUrl || l.unit.property.imageUrl) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.unit.property.imageUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={l.coverPhotoUrl ?? l.unit.property.imageUrl ?? ""} alt="" className="h-full w-full object-cover" />
                   ) : Icons.listings({ className: "h-10 w-10 text-brand-300" })}
+                  <span className="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {l.status === "PUBLISHED" ? "Listed" : l.status === "DRAFT" ? "Draft" : "Rented"}
+                  </span>
                 </div>
                 <div className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">{formatCurrency(l.rent)}<span className="text-sm font-normal text-gray-400">/mo</span></span>
-                    <Badge status={l.status} />
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{l.unit.property.name}, {l.unit.label}</p>
+                      <p className="text-xs text-gray-400">{l.unit.property.address}, {l.unit.property.city}, {l.unit.property.state}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{formatCurrency(l.rent)}</p>
+                      <p className="text-[10px] text-gray-400">Rent/monthly</p>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm font-medium text-gray-800">{l.headline ?? l.unit.label}</p>
-                  <p className="text-xs text-gray-400">{l.unit.property.name} · {l.unit.label}</p>
-                  <div className="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
-                    <span>{l.unit.beds} bd</span><span>{l.unit.baths} ba</span>
-                    {l.unit.sqft && <span>{l.unit.sqft} sqft</span>}
-                    <span className="ml-auto font-medium text-brand-700">{l.applications.length} application{l.applications.length !== 1 ? "s" : ""}</span>
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3 text-sm">
+                    <div className="flex items-center gap-1 text-gray-600">{Icons.bed({ className: "h-4 w-4 text-gray-400" })} <span className="font-medium">x {l.unit.beds}</span> <span className="text-xs text-gray-400">Bedrooms</span></div>
+                    <div className="flex items-center gap-1 text-gray-600"><span className="text-gray-400">◍</span> <span className="font-medium">x {l.unit.baths}</span> <span className="text-xs text-gray-400">Bathrooms</span></div>
                   </div>
+                  <Link href={`/portfolio/${l.unit.propertyId}`} className="mt-3 flex items-center justify-center gap-1 border-t border-gray-100 pt-3 text-sm font-medium text-brand-600 hover:underline">
+                    View unit {Icons.plus({ className: "h-3 w-3" })}
+                  </Link>
                 </div>
               </div>
             ))}

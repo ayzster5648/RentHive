@@ -579,6 +579,56 @@ export async function createListing(formData: FormData) {
   revalidatePath("/listings");
 }
 
+export async function createListingFull(formData: FormData) {
+  await requireRole("LANDLORD");
+  const unitId = String(formData.get("unitId") ?? "");
+  const rent = Number(formData.get("rent") ?? 0);
+  if (!unitId) throw new Error("Choose a unit to list.");
+  const num = (k: string) => { const v = String(formData.get(k) ?? "").trim(); return v ? Number(v) : null; };
+  const dateAvailable = String(formData.get("dateAvailable") ?? "");
+
+  await db.listing.create({
+    data: {
+      unitId,
+      rent,
+      status: "PUBLISHED",
+      headline: String(formData.get("headline") ?? "").trim() || null,
+      description: String(formData.get("description") ?? "").trim() || null,
+      securityDeposit: num("securityDeposit"),
+      amountRefundable: num("amountRefundable"),
+      dateAvailable: dateAvailable ? new Date(dateAvailable) : null,
+      minLease: num("minLease"),
+      maxLease: num("maxLease"),
+      monthToMonth: formData.get("monthToMonth") === "on",
+      leasingDetails: String(formData.get("leasingDetails") ?? "").trim() || null,
+      petsAllowed: formData.get("petsAllowed") === "on",
+      petsPolicy: String(formData.get("petsPolicy") ?? "").trim() || null,
+      parking: String(formData.get("parking") ?? "").trim() || null,
+      laundry: String(formData.get("laundry") ?? "").trim() || null,
+      airConditioning: String(formData.get("airConditioning") ?? "").trim() || null,
+      amenities: formData.getAll("amenities").map(String),
+      features: formData.getAll("features").map(String),
+      coverPhotoUrl: String(formData.get("coverPhotoUrl") ?? "").trim() || null,
+      videoUrl: String(formData.get("videoUrl") ?? "").trim() || null,
+      screeningTier: String(formData.get("screeningTier") ?? "Full check"),
+      incomeVerification: formData.get("incomeVerification") === "on",
+      onlineApplications: formData.get("onlineApplications") === "on",
+      contactName: String(formData.get("contactName") ?? "").trim() || null,
+      contactPhone: String(formData.get("contactPhone") ?? "").trim() || null,
+      contactEmail: String(formData.get("contactEmail") ?? "").trim() || null,
+      displayPhone: formData.get("displayPhone") === "on",
+      ribbonType: String(formData.get("ribbonType") ?? "None"),
+      ribbonTitle: String(formData.get("ribbonTitle") ?? "").trim() || null,
+      ribbonColor: String(formData.get("ribbonColor") ?? "").trim() || null,
+      syndication: formData.getAll("syndication").map(String),
+    },
+  });
+
+  // Mark the unit as listed (still vacant until move-in).
+  revalidatePath("/listings");
+  redirect("/listings");
+}
+
 export async function addApplication(formData: FormData) {
   await requireRole("LANDLORD");
   const name = String(formData.get("name") ?? "").trim();

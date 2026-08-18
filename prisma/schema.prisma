@@ -283,7 +283,39 @@ model Listing {
   status      ListingStatus @default(PUBLISHED)
   headline    String?
   description String?
-  createdAt   DateTime      @default(now())
+  // Leasing details
+  securityDeposit    Float?
+  amountRefundable   Float?
+  dateAvailable      DateTime?
+  minLease           Int?
+  maxLease           Int?
+  monthToMonth       Boolean  @default(false)
+  leasingDetails     String?
+  petsAllowed        Boolean  @default(false)
+  petsPolicy         String?
+  // Property info
+  parking         String?
+  laundry         String?
+  airConditioning String?
+  amenities       String[] @default([])
+  features        String[] @default([])
+  coverPhotoUrl   String?
+  gallery         String[] @default([])
+  videoUrl        String?
+  // Application settings
+  screeningTier      String  @default("Full check")
+  incomeVerification Boolean @default(true)
+  onlineApplications Boolean @default(true)
+  // Marketing
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  displayPhone Boolean  @default(true)
+  ribbonType   String   @default("None")
+  ribbonTitle  String?
+  ribbonColor  String?
+  syndication  String[] @default([])
+  createdAt    DateTime @default(now())
 
   unit         Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
   applications Application[]
