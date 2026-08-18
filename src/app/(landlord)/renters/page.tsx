@@ -7,6 +7,7 @@ import { Tabs } from "@/components/Tabs";
 import { Icons } from "@/components/icons";
 import { AddTenantButton } from "./AddTenantButton";
 import { BalanceActions } from "./BalanceActions";
+import { TenantMenu } from "./TenantMenu";
 
 export default async function RentersPage({
   searchParams,
@@ -35,6 +36,13 @@ export default async function RentersPage({
   const allLeases = properties.flatMap((p) => p.units.flatMap((u) => u.leases.map((l) => ({ ...l, unit: u, property: p }))));
   const activeLeases = allLeases.filter((l) => l.status === "ACTIVE");
 
+  // All tenants this landlord manages (with or without a lease).
+  const tenants = await db.user.findMany({
+    where: { role: "TENANT", OR: [{ managedById: user.id }, { leases: { some: { unit: { property: { landlordId: user.id } } } } }] },
+    include: { leases: { where: { status: "ACTIVE" }, include: { unit: { include: { property: true } } } } },
+    orderBy: { name: "asc" },
+  });
+
   const tabs = [
     { key: "leases", label: "Leases", href: "/renters" },
     { key: "occupancy", label: "Occupancy Board", href: "/renters?tab=occupancy" },
@@ -47,10 +55,12 @@ export default async function RentersPage({
       <PageHeader
         title="Renters"
         action={
-          <div className="flex gap-2">
-            {tab === "leases" && <Link href="/renters/move-in" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Move in</Link>}
-            <AddTenantButton vacantUnits={vacantUnits} />
-          </div>
+          tab === "renters"
+            ? <Link href="/renters/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Add tenant</Link>
+            : <div className="flex gap-2">
+                {tab === "leases" && <Link href="/renters/move-in" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Move in</Link>}
+                <AddTenantButton vacantUnits={vacantUnits} />
+              </div>
         }
       />
       <Tabs tabs={tabs} active={tab} />
@@ -58,7 +68,7 @@ export default async function RentersPage({
       {tab === "leases" && <LeasesTab leases={allLeases} activeCount={activeLeases.length} />}
       {tab === "occupancy" && <OccupancyTab properties={properties} />}
       {tab === "balances" && <BalancesTab leases={activeLeases} sub={sub} />}
-      {tab === "renters" && <RentersTab leases={activeLeases} />}
+      {tab === "renters" && <RentersTab tenants={tenants} />}
     </div>
   );
 }
@@ -297,22 +307,27 @@ function BalancesTab({ leases, sub }: { leases: any[]; sub: string }) {
   );
 }
 
-function RentersTab({ leases }: { leases: any[] }) {
-  if (leases.length === 0) return <EmptyState title="No renters yet" hint="Add a tenant to get started." />;
+function RentersTab({ tenants }: { tenants: any[] }) {
+  if (tenants.length === 0) return <EmptyState title="No renters yet" hint="Click “Add tenant” to add your first tenant." />;
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {leases.map((l) => {
-        const due = nextDueDate(l.rentDueDay);
+      {tenants.map((t) => {
+        const lease = t.leases[0];
         return (
-          <div key={l.id} className="card p-5 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-semibold text-brand-700">
-              {l.tenant.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+          <div key={t.id} className="card p-5">
+            <div className="mb-2 flex items-center justify-between text-gray-300">
+              {Icons.renters({ className: "h-4 w-4" })}
+              <div className="flex items-center gap-1">{Icons.chat({ className: "h-4 w-4" })}<TenantMenu id={t.id} archived={t.archived} /></div>
             </div>
-            <p className="font-semibold text-gray-900">{l.tenant.name}</p>
-            {l.tenant.phone && <p className="text-xs text-brand-600">{l.tenant.phone}</p>}
-            <p className="mt-2 rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">{l.property.name} · {l.unit.label}</p>
-            <p className="mt-2 text-xs text-gray-400">Next rent due {formatDate(due)}</p>
-            <Link href={`/renters/${l.tenant.id}`} className="mt-3 inline-block text-sm font-medium text-brand-600 hover:underline">View profile</Link>
+            <Link href={`/renters/${t.id}`} className="block text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-400 text-xl font-semibold text-white">
+                {t.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+              </div>
+              <p className="font-semibold text-gray-900">{t.name}{t.archived && <span className="ml-1 text-xs text-gray-400">(archived)</span>}</p>
+            </Link>
+            {t.phone && <p className="text-center text-xs text-brand-600 underline">{t.phone}</p>}
+            <p className="mt-2 rounded bg-gray-50 px-2 py-1 text-center text-xs text-gray-600">{lease ? `${lease.unit.property.name}, ${lease.unit.label}` : "No lease"}</p>
+            <Link href={`/renters/${t.id}`} className="mt-3 block border-t border-gray-100 pt-3 text-center text-sm font-medium text-brand-600 hover:underline">View profile</Link>
           </div>
         );
       })}

@@ -102,8 +102,15 @@ model User {
   password           String
   name               String
   phone              String?
+  additionalPhone    String?
   company            String?
   displayAsCompany   Boolean  @default(false)
+  middleName         String?
+  dob                DateTime?
+  additionalEmail    String?
+  forwardingAddress  String?
+  archived           Boolean  @default(false)
+  managedById        String?
   emergencyContact   String?
   notes              String?
   role               Role     @default(TENANT)

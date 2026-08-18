@@ -5,7 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
-import { EditContactButton } from "./EditContactButton";
+import { Icons } from "@/components/icons";
+import { TenantMenu } from "../TenantMenu";
 import { RecordPaymentButton } from "../../revenues/RecordPaymentButton";
 
 function ordinal(n: number): string {
@@ -36,7 +37,7 @@ export default async function TenantProfilePage({
     },
     orderBy: { startDate: "desc" },
   });
-  if (leases.length === 0) notFound();
+  // Tenants without a lease still have a viewable profile.
 
   const requests = await db.maintenanceRequest.findMany({
     where: { tenantId: id, unit: { property: { landlordId: user.id } } },
@@ -66,7 +67,16 @@ export default async function TenantProfilePage({
   return (
     <div>
       <Link href="/renters?tab=renters" className="mb-4 inline-block text-sm text-brand-600 hover:underline">← Back to renters</Link>
-      <PageHeader title={tenant.name} subtitle={`${active.unit.property.name} · ${active.unit.label}`} action={<EditContactButton tenant={tenant} />} />
+      <PageHeader
+        title={tenant.name}
+        subtitle={active ? `${active.unit.property.name} · ${active.unit.label}` : "No active lease"}
+        action={
+          <div className="flex items-center gap-2">
+            <Link href="/renters/move-in" className="btn-secondary">{Icons.plus({ className: "h-4 w-4" })}Move in</Link>
+            <TenantMenu id={tenant.id} archived={tenant.archived} label="button" addInvoiceHref={active ? `/revenues/new` : undefined} />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Sidebar card */}
@@ -110,7 +120,7 @@ export default async function TenantProfilePage({
                 </Grid>
               </Section>
               <Section title="Forwarding address">
-                <p className="text-sm text-gray-900">{active.unit.property.address}, {active.unit.property.city}, {active.unit.property.state} {active.unit.property.zip}</p>
+                <p className="text-sm text-gray-900">{tenant.forwardingAddress ?? (active ? `${active.unit.property.address}, ${active.unit.property.city}, ${active.unit.property.state} ${active.unit.property.zip}` : "—")}</p>
               </Section>
               <Section title="Emergency contacts">
                 {tenant.emergencyContact ? <p className="text-sm text-gray-900">{tenant.emergencyContact}</p> : <p className="text-sm text-gray-400">No emergency contact on file.</p>}

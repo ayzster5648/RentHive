@@ -100,6 +100,12 @@ export default async function ListingsPage({
   );
 }
 
+const emptyText: Record<string, string> = {
+  LEAD: "No leads",
+  APPLICATION: "No applications",
+  SCREENING: "No screenings",
+};
+
 async function ApplicantList({ stage, showScreening }: { stage: "LEAD" | "APPLICATION" | "SCREENING"; landlordId: string; showScreening: boolean }) {
   const apps = await db.application.findMany({
     where: { stage },
@@ -107,7 +113,47 @@ async function ApplicantList({ stage, showScreening }: { stage: "LEAD" | "APPLIC
     orderBy: { createdAt: "desc" },
   });
 
-  if (apps.length === 0) return <EmptyState title={`No ${stage.toLowerCase()}s yet`} hint="Add one with the button above." />;
+  if (apps.length === 0) {
+    return (
+      <div className="card flex flex-col items-center justify-center py-20 text-center text-gray-400">
+        {Icons.renters({ className: "h-8 w-8" })}
+        <p className="mt-2 font-medium text-gray-500">{emptyText[stage]}</p>
+        <p className="text-sm">There are no {stage.toLowerCase()}s on this page.</p>
+      </div>
+    );
+  }
+
+  // Leads use a lightweight contact-style table.
+  if (stage === "LEAD") {
+    return (
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+            <tr>
+              <th className="px-5 py-3 font-medium">Status</th>
+              <th className="px-5 py-3 font-medium">Name</th>
+              <th className="px-5 py-3 font-medium">Phone</th>
+              <th className="px-5 py-3 font-medium">Email</th>
+              <th className="px-5 py-3 font-medium">Source</th>
+              <th className="px-5 py-3 font-medium">Last update</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {apps.map((a) => (
+              <tr key={a.id} className="hover:bg-gray-50">
+                <td className="px-5 py-3"><Badge status={a.status} /></td>
+                <td className="px-5 py-3 font-medium text-gray-900">{a.name}</td>
+                <td className="px-5 py-3 text-gray-600">{a.phone ?? "—"}</td>
+                <td className="px-5 py-3 text-gray-600">{a.email ?? "—"}</td>
+                <td className="px-5 py-3 text-gray-500">{a.listing ? "Listing" : "Manual"}</td>
+                <td className="px-5 py-3 text-gray-500">{formatDate(a.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="card overflow-hidden">

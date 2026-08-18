@@ -213,11 +213,12 @@ export async function completeMoveIn(formData: FormData) {
   const endDate = endRaw ? new Date(endRaw) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   const dueDay = Math.min(Math.max(startDate.getDate(), 1), 28);
 
+  const mover = await requireRole("LANDLORD");
   let tenant = await db.user.findUnique({ where: { email: tenantEmail } });
   if (tenant) {
-    tenant = await db.user.update({ where: { id: tenant.id }, data: { name: tenantName, phone: tenantPhone, role: "TENANT" } });
+    tenant = await db.user.update({ where: { id: tenant.id }, data: { name: tenantName, phone: tenantPhone, role: "TENANT", managedById: mover.id } });
   } else {
-    tenant = await db.user.create({ data: { name: tenantName, email: tenantEmail, phone: tenantPhone, role: "TENANT", password: await hashPassword("password123") } });
+    tenant = await db.user.create({ data: { name: tenantName, email: tenantEmail, phone: tenantPhone, role: "TENANT", managedById: mover.id, password: await hashPassword("password123") } });
   }
 
   const lease = await db.lease.create({
@@ -287,6 +288,70 @@ export async function applyCredit(formData: FormData) {
     ...(amount >= oldest.amount ? [db.invoice.update({ where: { id: oldest.id }, data: { status: "PAID" as const } })] : []),
   ]);
   revalidatePath("/renters");
+}
+
+function tenantData(formData: FormData) {
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
+  const middleName = String(formData.get("middleName") ?? "").trim() || null;
+  const company = String(formData.get("company") ?? "").trim() || null;
+  const name = [firstName, lastName].filter(Boolean).join(" ") || company || firstName;
+  const dobRaw = String(formData.get("dob") ?? "");
+  return {
+    name,
+    middleName,
+    company,
+    displayAsCompany: formData.get("displayAsCompany") === "on",
+    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    additionalEmail: String(formData.get("additionalEmail") ?? "").trim() || null,
+    phone: String(formData.get("phone") ?? "").trim() || null,
+    additionalPhone: String(formData.get("additionalPhone") ?? "").trim() || null,
+    dob: dobRaw ? new Date(dobRaw) : null,
+    forwardingAddress: String(formData.get("forwardingAddress") ?? "").trim() || null,
+    emergencyContact: String(formData.get("emergencyContact") ?? "").trim() || null,
+    notes: String(formData.get("notes") ?? "").trim() || null,
+  };
+}
+
+/** Create a standalone tenant record (no lease). Assign a unit later via Move In. */
+export async function createTenantFull(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const data = tenantData(formData);
+  if (!data.name || !data.email) throw new Error("First name and email are required.");
+  const existing = await db.user.findUnique({ where: { email: data.email } });
+  const tenant = existing
+    ? await db.user.update({ where: { id: existing.id }, data: { ...data, role: "TENANT", managedById: user.id } })
+    : await db.user.create({ data: { ...data, role: "TENANT", managedById: user.id, password: await hashPassword("password123") } });
+  revalidatePath("/renters");
+  redirect(`/renters/${tenant.id}`);
+}
+
+export async function updateTenantFull(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  if (!id) throw new Error("Missing tenant.");
+  await db.user.update({ where: { id }, data: tenantData(formData) });
+  revalidatePath(`/renters/${id}`);
+  redirect(`/renters/${id}`);
+}
+
+export async function archiveTenant(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const t = await db.user.findUnique({ where: { id } });
+  if (t) await db.user.update({ where: { id }, data: { archived: !t.archived } });
+  revalidatePath("/renters");
+}
+
+export async function deleteTenant(formData: FormData) {
+  await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  // Only allow deleting tenants with no active lease.
+  const leaseCount = await db.lease.count({ where: { tenantId: id, status: "ACTIVE" } });
+  if (leaseCount > 0) throw new Error("End the tenant's active lease before deleting.");
+  if (id) await db.user.delete({ where: { id } });
+  revalidatePath("/renters");
+  redirect("/renters?tab=renters");
 }
 
 export async function updateTenant(formData: FormData) {
