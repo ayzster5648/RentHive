@@ -85,8 +85,8 @@ export default async function ListingsPage({
                     <div className="flex items-center gap-1 text-gray-600">{Icons.bed({ className: "h-4 w-4 text-gray-400" })} <span className="font-medium">x {l.unit.beds}</span> <span className="text-xs text-gray-400">Bedrooms</span></div>
                     <div className="flex items-center gap-1 text-gray-600"><span className="text-gray-400">◍</span> <span className="font-medium">x {l.unit.baths}</span> <span className="text-xs text-gray-400">Bathrooms</span></div>
                   </div>
-                  <Link href={`/portfolio/${l.unit.propertyId}`} className="mt-3 flex items-center justify-center gap-1 border-t border-gray-100 pt-3 text-sm font-medium text-brand-600 hover:underline">
-                    View unit {Icons.plus({ className: "h-3 w-3" })}
+                  <Link href="/listings/new" className="mt-3 flex items-center justify-center gap-1 border-t border-gray-100 pt-3 text-sm font-medium text-brand-600 hover:underline">
+                    List unit {Icons.plus({ className: "h-3 w-3" })}
                   </Link>
                 </div>
               </div>

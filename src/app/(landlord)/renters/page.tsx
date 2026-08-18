@@ -80,8 +80,8 @@ function LeasesTab({ leases, activeCount }: { leases: any[]; activeCount: number
             <tbody className="divide-y divide-gray-100">
               {leases.map((l) => (
                 <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3"><Badge status={l.status} /></td>
-                  <td className="px-5 py-3 text-gray-700">{l.property.name} · {l.unit.label}</td>
+                  <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`}><Badge status={l.status} /></Link></td>
+                  <td className="px-5 py-3"><Link href={`/renters/leases/${l.id}`} className="text-gray-700 hover:text-brand-700">{l.property.name} · {l.unit.label}</Link></td>
                   <td className="px-5 py-3">
                     <Link href={`/renters/${l.tenant.id}`} className="font-medium text-brand-700 hover:underline">{l.tenant.name}</Link>
                   </td>
