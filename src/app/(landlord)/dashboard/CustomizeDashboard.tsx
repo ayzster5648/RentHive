@@ -36,7 +36,7 @@ export function CustomizeDashboard({ selected }: { selected: string[] }) {
               <h2 className="font-semibold text-gray-900">Dashboard widgets</h2>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
-            <form action={saveDashboardWidgets}>
+            <form action={async (fd) => { await saveDashboardWidgets(fd); setOpen(false); }}>
               <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
                 <p className="mb-3 text-sm text-gray-500">Select the widgets you want displayed on your dashboard.</p>
                 <div className="space-y-1">
@@ -50,7 +50,7 @@ export function CustomizeDashboard({ selected }: { selected: string[] }) {
               </div>
               <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
                 <button type="button" onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
-                <button type="submit" className="btn-primary" onClick={() => setOpen(false)}>Update</button>
+                <button type="submit" className="btn-primary">Update</button>
               </div>
             </form>
           </div>

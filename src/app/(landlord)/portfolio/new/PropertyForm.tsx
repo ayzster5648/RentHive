@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPropertyFull } from "../../actions";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { PhotoUpload } from "@/components/PhotoUpload";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 const FEATURES = [
   "Alarm", "Furnished", "Renovated", "Hardwood floors", "Fireplace", "Fresh paint", "Dishwasher",
@@ -54,12 +56,8 @@ export function PropertyForm() {
       <div className="space-y-4">
         <div className="card overflow-hidden">
           <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700">Property photo</div>
-          <div className="flex h-52 flex-col items-center justify-center gap-2 bg-gray-50 text-gray-400">
-            {Icons.building({ className: "h-12 w-12" })}
-            <span className="text-xs">Paste an image URL below</span>
-          </div>
           <div className="p-3">
-            <input name="imageUrl" className="input text-sm" placeholder="https://…/photo.jpg (optional)" />
+            <PhotoUpload name="imageUrl" />
           </div>
         </div>
       </div>
@@ -80,26 +78,7 @@ export function PropertyForm() {
               <label className="label">MLS #</label>
               <input name="mls" className="input" />
             </div>
-            <div className="sm:col-span-2">
-              <label className="label">Street address *</label>
-              <input name="address" className="input" placeholder="123 Main St" required />
-            </div>
-            <div>
-              <label className="label">City *</label>
-              <input name="city" className="input" required />
-            </div>
-            <div>
-              <label className="label">State/Region *</label>
-              <input name="state" className="input" required />
-            </div>
-            <div>
-              <label className="label">Zip *</label>
-              <input name="zip" className="input" required />
-            </div>
-            <div>
-              <label className="label">Country *</label>
-              <input name="country" className="input" defaultValue="United States" required />
-            </div>
+            <AddressAutocomplete />
             <div>
               <label className="label">Property kind</label>
               <select name="type" className="input" defaultValue="House">
