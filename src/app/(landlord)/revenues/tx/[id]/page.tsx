@@ -17,7 +17,23 @@ export default async function TransactionDetail({ params }: { params: Promise<{ 
   const { id } = await params;
   const user = await requireRole("LANDLORD");
   const isInvoice = id.startsWith("inv-");
-  const realId = id.replace(/^(inv|inc)-/, "");
+  const isExpense = id.startsWith("exp-");
+  const realId = id.replace(/^(inv|inc|exp)-/, "");
+
+  if (isExpense) {
+    const exp = await db.expense.findFirst({ where: { id: realId, OR: [{ property: { landlordId: user.id } }, { propertyId: null }] }, include: { property: true } });
+    if (!exp) notFound();
+    const paid = exp.status === "PAID";
+    return (
+      <TxLayout
+        title={exp.category} amount={exp.amount} status={paid ? "PAID" : "DUE"} dueDate={exp.date}
+        paid={paid ? exp.amount : 0} payer={exp.vendor ?? "—"} outgoing
+        txId={shortId(exp.id)} type={`Expense / ${exp.category}`}
+        summary={[["Category", exp.category], ["Property", exp.property?.name ?? "Portfolio-wide"], ["Vendor", exp.vendor ?? "—"], ["Details", exp.memo ?? "—"]]}
+        payments={paid ? [{ date: exp.date, amount: exp.amount, who: exp.vendor ?? "—" }] : []}
+      />
+    );
+  }
 
   if (isInvoice) {
     const inv = await db.invoice.findFirst({
@@ -55,11 +71,12 @@ export default async function TransactionDetail({ params }: { params: Promise<{ 
 }
 
 function TxLayout({
-  title, amount, status, dueDate, paid, payer, txId, type, summary, payments, payAction,
+  title, amount, status, dueDate, paid, payer, txId, type, summary, payments, payAction, outgoing,
 }: {
   title: string; amount: number; status: string; dueDate: Date; paid: number; payer: string;
-  txId: string; type: string; summary: [string, string][]; payments: { date: Date; amount: number; who: string }[]; payAction?: React.ReactNode;
+  txId: string; type: string; summary: [string, string][]; payments: { date: Date; amount: number; who: string }[]; payAction?: React.ReactNode; outgoing?: boolean;
 }) {
+  void outgoing;
   const left = Math.max(amount - paid, 0);
   const pct = amount ? Math.round((paid / amount) * 100) : 0;
   return (

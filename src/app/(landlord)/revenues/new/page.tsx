@@ -4,7 +4,13 @@ import { requireRole } from "@/lib/auth";
 import { MoneyForm } from "@/components/MoneyForm";
 import { createIncome } from "../../actions";
 
-export default async function RecordIncomePage() {
+const INCOME_DEFAULTS: Record<string, string> = {
+  Deposit: "Deposit / Security deposit",
+  Credits: "Credits / Credit",
+};
+
+export default async function RecordIncomePage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const { category } = await searchParams;
   const user = await requireRole("LANDLORD");
   const properties = await db.property.findMany({ where: { landlordId: user.id }, select: { id: true, name: true } });
   const tenants = await db.user.findMany({
@@ -20,6 +26,7 @@ export default async function RecordIncomePage() {
         action={createIncome}
         properties={properties.map((p) => ({ id: p.id, label: p.name }))}
         contacts={tenants.map((t) => ({ id: t.id, label: t.name }))}
+        defaultCategoryPath={category ? INCOME_DEFAULTS[category] : undefined}
       />
     </div>
   );

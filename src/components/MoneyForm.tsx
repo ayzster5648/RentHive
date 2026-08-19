@@ -11,6 +11,7 @@ const INCOME_CATEGORIES: Record<string, string[]> = {
   Rent: ["Monthly rent", "Prorated rent"],
   Fees: ["Late fee", "Application fee", "Pet fee", "Admin fee"],
   Deposit: ["Security deposit", "Pet deposit"],
+  Credits: ["Credit", "Paid-in-Advance"],
   Reimbursement: ["Utilities", "Repairs"],
   Other: ["Other income"],
 };
@@ -23,6 +24,7 @@ const EXPENSE_CATEGORIES: Record<string, string[]> = {
   Landscaping: ["Lawn care", "Snow removal"],
   Mortgage: ["Mortgage payment"],
   Supplies: ["Supplies"],
+  Deposits: ["Security deposit return"],
   Other: ["Other expense"],
 };
 
@@ -32,12 +34,14 @@ export function MoneyForm({
   properties,
   contacts,
   defaultPayee,
+  defaultCategoryPath,
 }: {
   kind: "income" | "expense";
   action: (fd: FormData) => Promise<void>;
   properties: Option[];
   contacts: Option[];
   defaultPayee?: string;
+  defaultCategoryPath?: string;
 }) {
   const isIncome = kind === "income";
   const [scope, setScope] = useState<"PROPERTY" | "GENERAL">("PROPERTY");
@@ -86,7 +90,7 @@ export function MoneyForm({
 
           <div>
             <label className="label">Category &amp; subcategory <span className="text-red-500">*</span></label>
-            <select name="categoryPath" className="input" required defaultValue="">
+            <select name="categoryPath" className="input" required defaultValue={defaultCategoryPath ?? ""}>
               <option value="" disabled>Select a category…</option>
               {Object.entries(cats).map(([cat, subs]) => (
                 <optgroup key={cat} label={cat}>
