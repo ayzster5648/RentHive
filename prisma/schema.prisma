@@ -414,3 +414,39 @@ model Task {
   dueDate   DateTime?
   createdAt DateTime  @default(now())
 }
+
+model BankAccount {
+  id         String   @id @default(cuid())
+  landlordId String
+  bankName   String
+  nickname   String?
+  mask       String
+  createdAt  DateTime @default(now())
+
+  reconciliations Reconciliation[]
+}
+
+model Reconciliation {
+  id            String   @id @default(cuid())
+  bankAccountId String
+  startDate     DateTime
+  autoRefresh   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  bankAccount BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  lines       BankStatementLine[]
+}
+
+model BankStatementLine {
+  id               String   @id @default(cuid())
+  reconciliationId String
+  date             DateTime
+  description      String
+  amount           Float // positive = deposit, negative = withdrawal
+  matchStatus      String   @default("TO_REVIEW") // TO_REVIEW | MATCHED | IGNORED
+  matchedRef       String?
+  note             String?
+  createdAt        DateTime @default(now())
+
+  reconciliation Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+}

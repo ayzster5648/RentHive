@@ -1,88 +1,74 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { PageHeader, StatCard, EmptyState } from "@/components/ui";
+import { formatCurrency, cn } from "@/lib/utils";
+import { PageHeader, EmptyState } from "@/components/ui";
+import { Icons } from "@/components/icons";
+import { AddBankAccountButton } from "./ReconClient";
 
 export default async function ReconciliationPage() {
   const user = await requireRole("LANDLORD");
-
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-  // "Cleared" items this period = recorded payments (in) and paid expenses (out).
-  const payments = await db.payment.findMany({
-    where: { paidAt: { gte: monthStart, lt: monthEnd }, invoice: { lease: { unit: { property: { landlordId: user.id } } } } },
-    include: { invoice: { include: { lease: { include: { tenant: true } } } } },
-    orderBy: { paidAt: "asc" },
+  const accounts = await db.bankAccount.findMany({
+    where: { landlordId: user.id },
+    include: { reconciliations: { include: { lines: true }, orderBy: { createdAt: "desc" } } },
+    orderBy: { createdAt: "asc" },
   });
-  const expenses = await db.expense.findMany({
-    where: { status: "PAID", date: { gte: monthStart, lt: monthEnd }, OR: [{ property: { landlordId: user.id } }, { propertyId: null }] },
-    orderBy: { date: "asc" },
-  });
-
-  const totalIn = payments.reduce((s, p) => s + p.amount, 0);
-  const totalOut = expenses.reduce((s, e) => s + e.amount, 0);
-  const net = totalIn - totalOut;
-
-  const items = [
-    ...payments.map((p) => ({ id: "p" + p.id, date: p.paidAt, desc: `Rent payment — ${p.invoice.lease.tenant.name}`, method: p.method, amount: p.amount, dir: "IN" as const })),
-    ...expenses.map((e) => ({ id: "e" + e.id, date: e.date, desc: `${e.category}${e.vendor ? ` — ${e.vendor}` : ""}`, method: "Bank", amount: e.amount, dir: "OUT" as const })),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  // Running cleared balance.
-  let running = 0;
 
   return (
     <div>
-      <PageHeader
-        title="Reconciliation"
-        subtitle={`Compare your books against cleared bank activity for ${now.toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`}
-      />
+      <PageHeader title="Reconciliation" subtitle="Compare your records against your bank statements to catch discrepancies." action={<AddBankAccountButton />} />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Cleared deposits" value={formatCurrency(totalIn)} accent="green" />
-        <StatCard label="Cleared withdrawals" value={formatCurrency(totalOut)} accent="red" />
-        <StatCard label="Reconciled balance" value={formatCurrency(net)} accent={net >= 0 ? "green" : "red"} />
-      </div>
-
-      <div className="mb-6 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
-        <p className="font-medium">✓ Books balanced for the period</p>
-        <p className="mt-1 text-brand-700">
-          {items.length} cleared transaction{items.length !== 1 ? "s" : ""} reconcile to a net balance of {formatCurrency(net)}.
-          Connect a bank feed to auto-match statement lines.
-        </p>
-      </div>
-
-      {items.length === 0 ? (
-        <EmptyState title="Nothing cleared this period" hint="Recorded payments and paid expenses appear here." />
+      {accounts.length === 0 ? (
+        <div className="card p-10 text-center">
+          {Icons.reconciliation({ className: "mx-auto h-10 w-10 text-brand-300" })}
+          <p className="mt-3 font-medium text-gray-700">No bank accounts yet</p>
+          <p className="mt-1 text-sm text-gray-400">Add a bank account to start reconciling. (No live bank feed is connected — statements are generated from your recorded payments and expenses.)</p>
+          <div className="mt-4 flex justify-center"><AddBankAccountButton /></div>
+        </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-5 py-3 font-medium">Date</th>
-                <th className="px-5 py-3 font-medium">Description</th>
-                <th className="px-5 py-3 font-medium">Method</th>
-                <th className="px-5 py-3 font-medium text-right">Amount</th>
-                <th className="px-5 py-3 font-medium text-right">Running balance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {items.map((it) => {
-                running += it.dir === "IN" ? it.amount : -it.amount;
-                return (
-                  <tr key={it.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 text-gray-600">{formatDate(it.date)}</td>
-                    <td className="px-5 py-3 text-gray-800">{it.desc}</td>
-                    <td className="px-5 py-3 text-gray-500">{it.method}</td>
-                    <td className={`px-5 py-3 text-right font-medium ${it.dir === "IN" ? "text-green-700" : "text-red-600"}`}>{it.dir === "IN" ? "+" : "−"}{formatCurrency(it.amount)}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-900">{formatCurrency(running)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((a) => {
+            const rec = a.reconciliations[0];
+            const lines = rec?.lines.filter((l) => l.matchStatus !== "IGNORED") ?? [];
+            const statement = lines.reduce((s, l) => s + l.amount, 0);
+            const account = lines.filter((l) => l.matchStatus === "MATCHED").reduce((s, l) => s + l.amount, 0);
+            const diff = statement - account;
+            const toReview = rec?.lines.filter((l) => l.matchStatus === "TO_REVIEW").length ?? 0;
+
+            return (
+              <div key={a.id} className="card overflow-hidden">
+                <div className="flex items-center gap-3 p-5">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100">{Icons.building({ className: "h-5 w-5 text-gray-400" })}</span>
+                  <div>
+                    <p className="font-semibold uppercase text-gray-900">{a.bankName}</p>
+                    <p className="text-xs text-gray-400">{a.nickname ? `${a.nickname} | ` : ""}•••• {a.mask}</p>
+                  </div>
+                </div>
+
+                {rec && (
+                  <div className="space-y-1 px-5 pb-4 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Statement balance</span><span className="text-gray-900">{formatCurrency(statement)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Balance in RentHive</span><span className="text-gray-900">{formatCurrency(account)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Difference</span><span className={cn("font-semibold", diff === 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(diff)}</span></div>
+                  </div>
+                )}
+
+                <div className={cn("flex items-center justify-between border-t px-5 py-3 text-sm", rec && toReview > 0 ? "border-amber-100 bg-amber-50 text-amber-700" : "border-gray-100 bg-gray-50 text-gray-500")}>
+                  {rec ? (
+                    <>
+                      <span className="flex items-center gap-1.5">{toReview > 0 ? <>{Icons.wrench({ className: "h-4 w-4" })} {toReview} record{toReview !== 1 ? "s" : ""} to review</> : <>{Icons.check({ className: "h-4 w-4 text-green-600" })} Reconciled</>}</span>
+                      <Link href={`/reconciliation/${rec.id}`} className="font-semibold text-brand-600 hover:underline">View</Link>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex items-center gap-1.5">{Icons.reconciliation({ className: "h-4 w-4" })} Start reconciliation</span>
+                      <Link href={`/reconciliation/new?bank=${a.id}`} className="font-semibold text-brand-600 hover:underline">Start</Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
