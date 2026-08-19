@@ -2,13 +2,16 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { MoveInWizard } from "./MoveInWizard";
 
-export default async function MoveInPage() {
+export default async function MoveInPage({ searchParams }: { searchParams: Promise<{ tenant?: string }> }) {
+  const { tenant } = await searchParams;
   const user = await requireRole("LANDLORD");
   const units = await db.unit.findMany({
     where: { property: { landlordId: user.id } },
     include: { property: true },
     orderBy: { label: "asc" },
   });
+
+  const prefill = tenant ? await db.user.findFirst({ where: { id: tenant, role: "TENANT" } }) : null;
 
   if (units.length === 0) {
     return (
@@ -21,7 +24,10 @@ export default async function MoveInPage() {
 
   return (
     <div className="-mx-8 -my-7 overflow-hidden border-t border-gray-200">
-      <MoveInWizard units={units.map((u) => ({ id: u.id, label: u.label, propertyName: u.property.name, rent: u.rent }))} />
+      <MoveInWizard
+        units={units.map((u) => ({ id: u.id, label: u.label, propertyName: u.property.name, rent: u.rent }))}
+        defaultTenant={prefill ? { name: prefill.name, email: prefill.email, phone: prefill.phone ?? "" } : undefined}
+      />
     </div>
   );
 }

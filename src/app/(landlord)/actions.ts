@@ -244,6 +244,18 @@ export async function completeMoveIn(formData: FormData) {
     });
   }
 
+  // Extra move-in charges (deposits + one-time transactions from the wizard).
+  try {
+    const extras = JSON.parse(String(formData.get("extraCharges") || "[]")) as { label: string; type: string; amount: number }[];
+    for (const c of extras) {
+      const amt = Number(c.amount);
+      if (!amt || amt <= 0) continue;
+      await db.invoice.create({
+        data: { leaseId: lease.id, type: c.type === "DEPOSIT" ? "DEPOSIT" : "OTHER", amount: amt, dueDate: startDate, status: markPaid ? "PAID" : "DUE", memo: c.label || (c.type === "DEPOSIT" ? "Deposit" : "Charge") },
+      });
+    }
+  } catch { /* ignore malformed extras */ }
+
   revalidatePath("/renters");
   revalidatePath("/dashboard");
   redirect(`/renters/leases/${lease.id}`);
@@ -352,6 +364,29 @@ export async function deleteTenant(formData: FormData) {
   if (id) await db.user.delete({ where: { id } });
   revalidatePath("/renters");
   redirect("/renters?tab=renters");
+}
+
+export async function createInsurance(formData: FormData) {
+  await requireRole("LANDLORD");
+  const tenantId = String(formData.get("tenantId") ?? "");
+  const policyNumber = String(formData.get("policyNumber") ?? "").trim();
+  const effRaw = String(formData.get("effectiveDate") || "");
+  const expRaw = String(formData.get("expirationDate") || "");
+  if (!tenantId || !policyNumber || !effRaw || !expRaw) throw new Error("Policy #, effective and expiration dates are required.");
+
+  await db.insurance.create({
+    data: {
+      tenantId,
+      leaseId: String(formData.get("leaseId") ?? "") || null,
+      company: String(formData.get("company") ?? "").trim() || null,
+      website: String(formData.get("website") ?? "").trim() || null,
+      policyNumber,
+      effectiveDate: new Date(effRaw),
+      expirationDate: new Date(expRaw),
+      details: String(formData.get("details") ?? "").trim() || null,
+    },
+  });
+  revalidatePath(`/renters/${tenantId}`);
 }
 
 export async function updateTenant(formData: FormData) {

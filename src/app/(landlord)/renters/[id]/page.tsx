@@ -7,6 +7,7 @@ import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { Icons } from "@/components/icons";
 import { TenantMenu } from "../TenantMenu";
+import { AddInsuranceButton } from "./AddInsuranceButton";
 import { RecordPaymentButton } from "../../revenues/RecordPaymentButton";
 
 function ordinal(n: number): string {
@@ -47,6 +48,8 @@ export default async function TenantProfilePage({
   const applications = tenant.email
     ? await db.application.findMany({ where: { email: tenant.email }, include: { listing: { include: { unit: { include: { property: true } } } } } })
     : [];
+  const insurances = await db.insurance.findMany({ where: { tenantId: id }, orderBy: { createdAt: "desc" } });
+  const leaseOptions = leases.map((l) => ({ id: l.id, label: `${l.unit.property.name} · ${l.unit.label}` }));
 
   const active = leases.find((l) => l.status === "ACTIVE") ?? leases[0];
   const allInvoices = leases.flatMap((l) => l.invoices);
@@ -177,7 +180,36 @@ export default async function TenantProfilePage({
             )
           )}
 
-          {tab === "insurance" && <EmptyState title="No renters insurance on file" hint="Insurance policies the tenant adds will appear here." />}
+          {tab === "insurance" && (
+            <div>
+              <div className="mb-4 flex justify-end"><AddInsuranceButton tenantId={tenant.id} leases={leaseOptions} /></div>
+              {insurances.length === 0 ? (
+                <EmptyState title="No renters insurance on file" hint="Click “Add insurance” to record a policy." />
+              ) : (
+                <div className="card overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                      <tr><th className="px-5 py-3 font-medium">Policy #</th><th className="px-5 py-3 font-medium">Company</th><th className="px-5 py-3 font-medium">Effective</th><th className="px-5 py-3 font-medium">Expires</th><th className="px-5 py-3 font-medium">Status</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {insurances.map((ins) => {
+                        const expired = new Date(ins.expirationDate) < new Date();
+                        return (
+                          <tr key={ins.id} className="hover:bg-gray-50">
+                            <td className="px-5 py-3 font-medium text-gray-900">{ins.policyNumber}</td>
+                            <td className="px-5 py-3 text-gray-600">{ins.company ?? "—"}</td>
+                            <td className="px-5 py-3 text-gray-600">{formatDate(ins.effectiveDate)}</td>
+                            <td className="px-5 py-3 text-gray-600">{formatDate(ins.expirationDate)}</td>
+                            <td className="px-5 py-3">{expired ? <Badge status="OVERDUE" /> : <Badge status="ACTIVE" />}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {tab === "applications" && (
             applications.length === 0 ? <EmptyState title="No applications" hint="Applications submitted by this person will appear here." /> : (

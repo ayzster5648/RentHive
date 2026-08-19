@@ -415,6 +415,19 @@ model Task {
   createdAt DateTime  @default(now())
 }
 
+model Insurance {
+  id             String   @id @default(cuid())
+  tenantId       String
+  leaseId        String?
+  company        String?
+  website        String?
+  policyNumber   String
+  effectiveDate  DateTime
+  expirationDate DateTime
+  details        String?
+  createdAt      DateTime @default(now())
+}
+
 model BankAccount {
   id         String   @id @default(cuid())
   landlordId String

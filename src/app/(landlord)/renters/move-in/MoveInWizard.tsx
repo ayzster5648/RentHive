@@ -33,12 +33,16 @@ function Toggle({ name, defaultChecked, label, desc }: { name: string; defaultCh
   );
 }
 
-export function MoveInWizard({ units }: { units: Unit[] }) {
+export function MoveInWizard({ units, defaultTenant }: { units: Unit[]; defaultTenant?: { name: string; email: string; phone: string } }) {
   const [step, setStep] = useState(0);
   const [leaseType, setLeaseType] = useState<"FIXED" | "M2M">("FIXED");
   const [unitId, setUnitId] = useState(units[0]?.id ?? "");
   const [rent, setRent] = useState(units[0]?.rent ?? 0);
-  const [tenantName, setTenantName] = useState("");
+  const [tenantName, setTenantName] = useState(defaultTenant?.name ?? "");
+  const [charges, setCharges] = useState<{ label: string; type: string; amount: number }[]>([]);
+  const [depositAmt, setDepositAmt] = useState("");
+  const [txnLabel, setTxnLabel] = useState("");
+  const [txnAmt, setTxnAmt] = useState("");
   const [pending, setPending] = useState(false);
   const router = useRouter();
   const last = STEPS.length - 1;
@@ -114,8 +118,8 @@ export function MoveInWizard({ units }: { units: Unit[] }) {
               <p className="mb-4 text-sm text-gray-500">Enter the tenant. If they already have an account, the lease is shared with them automatically.</p>
               <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="label">Tenant name <span className="text-red-500">*</span></label><input name="tenantName" className="input" value={tenantName} onChange={(e) => setTenantName(e.target.value)} placeholder="Jane Doe" required /></div>
-                <div><label className="label">Tenant email <span className="text-red-500">*</span></label><input name="tenantEmail" type="email" className="input" placeholder="jane@email.com" required /></div>
-                <div><label className="label">Phone</label><input name="tenantPhone" className="input" /></div>
+                <div><label className="label">Tenant email <span className="text-red-500">*</span></label><input name="tenantEmail" type="email" className="input" defaultValue={defaultTenant?.email} placeholder="jane@email.com" required /></div>
+                <div><label className="label">Phone</label><input name="tenantPhone" className="input" defaultValue={defaultTenant?.phone} /></div>
               </div>
             </div>
             <Toggle name="freeTenantPortal" defaultChecked label="Free Tenant Portal" desc="Share lease details, send messages, and collect payments by inviting the tenant to create an account via email." />
@@ -136,10 +140,42 @@ export function MoveInWizard({ units }: { units: Unit[] }) {
               </div>
               <label className="mt-4 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="markPaid" className="h-4 w-4 accent-brand-600" /> Mark all past invoices as paid</label>
             </section>
-            <div className="space-y-3">
-              {[["Deposits", "Include any additional deposits for this lease.", "Add deposit"], ["Other lease transactions", "Add other one-time or recurring charges to include in the lease.", "Add transaction"], ["Late fees", "Set automatic late fees after a tenant's grace period expires.", "Add late fees"]].map(([t, d, a]) => (
-                <div key={t} className="rounded-xl border border-gray-200 p-4"><p className="font-semibold text-gray-900">{t}</p><p className="text-sm text-gray-500">{d}</p><span className="mt-2 inline-block text-sm font-medium text-brand-600">{a}</span></div>
-              ))}
+            <input type="hidden" name="extraCharges" value={JSON.stringify(charges)} />
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900">Deposits</p>
+                <p className="mb-2 text-sm text-gray-500">Include any additional deposits for this lease.</p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div><label className="label">Amount</label><input type="number" min="0" step="50" className="input w-40" value={depositAmt} onChange={(e) => setDepositAmt(e.target.value)} placeholder="0.00" /></div>
+                  <button type="button" onClick={() => { const a = Number(depositAmt); if (a > 0) { setCharges((c) => [...c, { label: "Security deposit", type: "DEPOSIT", amount: a }]); setDepositAmt(""); } }} className="btn-secondary">+ Add deposit</button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900">Other lease transactions</p>
+                <p className="mb-2 text-sm text-gray-500">Add other one-time charges to include in the lease.</p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div><label className="label">Description</label><input className="input w-44" value={txnLabel} onChange={(e) => setTxnLabel(e.target.value)} placeholder="Pet fee" /></div>
+                  <div><label className="label">Amount</label><input type="number" min="0" step="10" className="input w-32" value={txnAmt} onChange={(e) => setTxnAmt(e.target.value)} placeholder="0.00" /></div>
+                  <button type="button" onClick={() => { const a = Number(txnAmt); if (a > 0 && txnLabel) { setCharges((c) => [...c, { label: txnLabel, type: "OTHER", amount: a }]); setTxnLabel(""); setTxnAmt(""); } }} className="btn-secondary">+ Add transaction</button>
+                </div>
+              </div>
+              {charges.length > 0 && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Charges to add on move-in</p>
+                  <ul className="space-y-1">
+                    {charges.map((c, i) => (
+                      <li key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">{c.label}</span>
+                        <span className="flex items-center gap-3"><span className="font-medium text-gray-900">${c.amount.toFixed(2)}</span><button type="button" onClick={() => setCharges((cs) => cs.filter((_, j) => j !== i))} className="text-xs text-red-500 hover:underline">Remove</button></span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900">Late fees</p>
+                <p className="text-sm text-gray-500">Automatic late fees generate after the tenant&apos;s grace period ends. Configure them on the lease after move-in.</p>
+              </div>
             </div>
           </div>
 
