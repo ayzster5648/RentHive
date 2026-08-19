@@ -86,7 +86,9 @@ enum InvoiceType {
 enum MaintenanceStatus {
   OPEN
   IN_PROGRESS
+  IN_REVIEW
   RESOLVED
+  CANCELLED
 }
 
 enum MaintenancePriority {
@@ -261,6 +263,10 @@ model MaintenanceRequest {
   status      MaintenanceStatus   @default(OPEN)
   recurring   Boolean             @default(false)
   assigneeId  String?
+  refNumber   Int?
+  dueDate     DateTime?
+  allowEntry  Boolean             @default(false)
+  availability String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 

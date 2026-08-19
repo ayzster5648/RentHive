@@ -468,17 +468,106 @@ export async function updateMaintenanceStatus(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
-  if (!id || !["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) {
+  if (!id || !MAINT_STATUSES.includes(status)) {
     throw new Error("Invalid request.");
   }
 
   await db.maintenanceRequest.update({
     where: { id },
-    data: { status: status as "OPEN" | "IN_PROGRESS" | "RESOLVED" },
+    data: { status: status as MaintStatus },
   });
 
   revalidatePath("/maintenance");
+  revalidatePath(`/maintenance/requests/${id}`);
   revalidatePath("/dashboard");
+}
+
+const MAINT_STATUSES = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "CANCELLED"];
+type MaintStatus = "OPEN" | "IN_PROGRESS" | "IN_REVIEW" | "RESOLVED" | "CANCELLED";
+
+/** Change status of many requests at once (bulk action bar). */
+export async function bulkUpdateMaintenanceStatus(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const ids = String(formData.get("ids") ?? "").split(",").filter(Boolean);
+  const status = String(formData.get("status") ?? "");
+  if (!ids.length || !MAINT_STATUSES.includes(status)) throw new Error("Invalid request.");
+  await db.maintenanceRequest.updateMany({
+    where: { id: { in: ids }, unit: { property: { landlordId: user.id } } },
+    data: { status: status as MaintStatus },
+  });
+  revalidatePath("/maintenance");
+  revalidatePath("/dashboard");
+}
+
+/** Assign many requests to one service pro at once. */
+export async function bulkAssignMaintenance(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const ids = String(formData.get("ids") ?? "").split(",").filter(Boolean);
+  const assigneeId = String(formData.get("assigneeId") ?? "") || null;
+  if (!ids.length) throw new Error("Select at least one request.");
+  await db.maintenanceRequest.updateMany({
+    where: { id: { in: ids }, unit: { property: { landlordId: user.id } } },
+    data: { assigneeId },
+  });
+  revalidatePath("/maintenance");
+}
+
+/** Delete many requests at once. */
+export async function bulkDeleteMaintenance(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const ids = String(formData.get("ids") ?? "").split(",").filter(Boolean);
+  if (!ids.length) return;
+  await db.maintenanceRequest.deleteMany({
+    where: { id: { in: ids }, unit: { property: { landlordId: user.id } } },
+  });
+  revalidatePath("/maintenance");
+  revalidatePath("/dashboard");
+}
+
+/** Delete a single request from its detail page Actions menu. */
+export async function deleteMaintenanceRequest(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const req = await db.maintenanceRequest.findFirst({ where: { id, unit: { property: { landlordId: user.id } } } });
+  if (!req) throw new Error("Request not found.");
+  await db.maintenanceRequest.delete({ where: { id } });
+  revalidatePath("/maintenance");
+  revalidatePath("/dashboard");
+  redirect("/maintenance");
+}
+
+/** Full add-request wizard (Request details → Tenants & access → Assignee). */
+export async function createMaintenanceRequestFull(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const unitId = String(formData.get("unitId") ?? "");
+  const category = String(formData.get("category") ?? "General").trim() || "General";
+  const priority = String(formData.get("priority") ?? "MEDIUM");
+  const dueRaw = String(formData.get("dueDate") || "");
+  const description = String(formData.get("description") ?? "").trim();
+  const assigneeId = String(formData.get("assigneeId") ?? "") || null;
+  const allowEntry = formData.get("allowEntry") === "on" || formData.get("allowEntry") === "true";
+  const availability = String(formData.get("availability") ?? "").trim() || null;
+  let tenantId = String(formData.get("tenantId") ?? "") || null;
+  if (!unitId) throw new Error("Select a property.");
+
+  const unit = await db.unit.findFirst({ where: { id: unitId, property: { landlordId: user.id } }, include: { leases: { where: { status: "ACTIVE" } } } });
+  if (!unit) throw new Error("Unit not found.");
+  if (!tenantId) tenantId = unit.leases[0]?.tenantId ?? user.id;
+
+  await db.maintenanceRequest.create({
+    data: {
+      unitId, tenantId,
+      title: category,
+      description: description || category,
+      category, priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
+      status: "OPEN", assigneeId, allowEntry, availability,
+      dueDate: dueRaw ? new Date(dueRaw) : null,
+      refNumber: Math.floor(100000 + Math.random() * 900000),
+    },
+  });
+  revalidatePath("/maintenance");
+  revalidatePath("/dashboard");
+  redirect("/maintenance");
 }
 
 // --- Maintenance: landlord records a request ---
@@ -514,9 +603,9 @@ export async function createMaintenanceRequestLandlord(formData: FormData) {
 }
 
 // Plain-argument actions used by the drag-and-drop board.
-export async function setMaintenanceStatus(id: string, status: "OPEN" | "IN_PROGRESS" | "RESOLVED") {
+export async function setMaintenanceStatus(id: string, status: MaintStatus) {
   await requireRole("LANDLORD");
-  if (!id || !["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) return;
+  if (!id || !MAINT_STATUSES.includes(status)) return;
   await db.maintenanceRequest.update({ where: { id }, data: { status } });
   revalidatePath("/maintenance");
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateMaintenanceStatus, assignServicePro } from "../actions";
 import { Badge } from "@/components/ui";
@@ -19,9 +20,11 @@ type Card = {
 type Pro = { id: string; name: string };
 
 const COLUMNS = [
-  { key: "OPEN", label: "New", accent: "border-t-blue-400" },
+  { key: "OPEN", label: "New", accent: "border-t-red-400" },
   { key: "IN_PROGRESS", label: "In Progress", accent: "border-t-amber-400" },
+  { key: "IN_REVIEW", label: "In review", accent: "border-t-yellow-400" },
   { key: "RESOLVED", label: "Resolved", accent: "border-t-green-400" },
+  { key: "CANCELLED", label: "Cancelled", accent: "border-t-gray-400" },
 ];
 
 export function KanbanBoard({ initial, pros }: { initial: Card[]; pros: Pro[] }) {
@@ -55,7 +58,7 @@ export function KanbanBoard({ initial, pros }: { initial: Card[]; pros: Pro[] })
       <div className="mb-4 rounded-lg border border-brand-100 bg-brand-50/60 p-3 text-sm text-brand-800">
         <strong>Drag cards between columns</strong> to update status, and assign a service pro on each card.
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {COLUMNS.map((col) => {
           const items = cards.filter((c) => c.status === col.key);
           return (
@@ -94,6 +97,7 @@ export function KanbanBoard({ initial, pros }: { initial: Card[]; pros: Pro[] })
                       <option value="">Unassigned</option>
                       {pros.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
+                    <Link href={`/maintenance/requests/${c.id}`} onClick={(e) => e.stopPropagation()} className="mt-2 block text-right text-xs font-medium text-brand-600 hover:underline">View →</Link>
                   </div>
                 ))}
                 {items.length === 0 && <p className="px-1 py-6 text-center text-xs text-gray-400">Drop cards here</p>}

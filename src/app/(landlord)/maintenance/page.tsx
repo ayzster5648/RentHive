@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { formatDate } from "@/lib/utils";
-import { PageHeader, StatCard, Badge, Avatar, EmptyState } from "@/components/ui";
+import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { Icons } from "@/components/icons";
-import { StatusControl } from "./StatusControl";
-import { AddRequestButton, AssignProControl, AddRecurringButton } from "./MaintenanceButtons";
+import { AddRecurringButton } from "./MaintenanceButtons";
 import { KanbanBoard } from "./KanbanBoard";
+import { RequestsList } from "./RequestsList";
 import { ProMenu } from "./ProMenu";
 
 export default async function MaintenancePage({
@@ -24,7 +23,7 @@ export default async function MaintenancePage({
   const requests = await db.maintenanceRequest.findMany({
     where: { unit: propFilter },
     include: { tenant: true, assignee: true, unit: { include: { property: true } } },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }],
   });
   const pros = await db.servicePro.findMany({ orderBy: [{ archived: "asc" }, { name: "asc" }] });
   const units = await db.unit.findMany({ where: { property: { landlordId: user.id } }, include: { property: true }, orderBy: { label: "asc" } });
@@ -43,14 +42,26 @@ export default async function MaintenancePage({
   const action =
     tab === "pros" ? <Link href="/maintenance/pros/new" className="btn-primary">{Icons.plus({ className: "h-4 w-4" })}Add service pro</Link>
     : tab === "recurring" ? <AddRecurringButton units={unitOptions} pros={proOptions} />
-    : <AddRequestButton units={unitOptions} pros={proOptions} />;
+    : undefined;
+
+  const rows = requests.map((r) => ({
+    id: r.id,
+    refNumber: r.refNumber ?? 100000 + (r.createdAt.getTime() % 900000),
+    status: r.status,
+    category: r.category,
+    propertyId: r.unit.property.id,
+    propertyName: r.unit.property.name,
+    unitLabel: r.unit.label,
+    priority: r.priority,
+    assigneeName: r.assignee?.name ?? null,
+  }));
 
   return (
     <div>
       <PageHeader title={propertyName ? `Maintenance · ${propertyName}` : "Maintenance"} action={action} />
       <Tabs tabs={tabs} active={tab} />
 
-      {tab === "requests" && <RequestsTab requests={requests} pros={proOptions} />}
+      {tab === "requests" && <RequestsList rows={rows} pros={proOptions} addHref="/maintenance/requests/new" />}
       {tab === "board" && (
         requests.length === 0 ? <EmptyState title="No requests to organize" hint="Add a request and it'll show on the board." /> :
         <KanbanBoard
@@ -65,47 +76,6 @@ export default async function MaintenancePage({
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function RequestsTab({ requests, pros }: { requests: any[]; pros: { id: string; name: string }[] }) {
-  const open = requests.filter((r) => r.status === "OPEN").length;
-  const inProgress = requests.filter((r) => r.status === "IN_PROGRESS").length;
-  const resolved = requests.filter((r) => r.status === "RESOLVED").length;
-  return (
-    <div>
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Open" value={String(open)} accent="amber" />
-        <StatCard label="In progress" value={String(inProgress)} accent="brand" />
-        <StatCard label="Resolved" value={String(resolved)} accent="green" />
-      </div>
-      {requests.length === 0 ? (
-        <EmptyState title="No results found" hint="Please modify your search criteria and try again." />
-      ) : (
-        <div className="space-y-3">
-          {requests.map((r) => (
-            <div key={r.id} className="card flex flex-wrap items-center justify-between gap-4 p-4">
-              <div className="flex items-start gap-3">
-                <Avatar name={r.tenant.name} />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">{r.title}</p>
-                    <Badge status={r.priority} />
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{r.category}</span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-gray-500">{r.description}</p>
-                  <p className="mt-1 text-xs text-gray-400">{r.unit.property.name} · {r.unit.label} · {formatDate(r.createdAt)}{r.assignee ? ` · ${r.assignee.name}` : ""}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <AssignProControl id={r.id} assigneeId={r.assigneeId} pros={pros} />
-                <StatusControl id={r.id} status={r.status} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function RecurringTab({ requests }: { requests: any[] }) {
   return (
     <div className="card overflow-hidden">
