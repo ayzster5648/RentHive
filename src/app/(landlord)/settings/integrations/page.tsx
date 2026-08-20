@@ -16,9 +16,15 @@ export default async function IntegrationsSettingsPage() {
   ];
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <SettingsNav active="integrations" />
-      <div className="card p-6">
+      <div className="mt-6 card p-6">
+        <h2 className="font-semibold text-gray-900">Google Calendar Sync</h2>
+        <p className="mt-1 text-sm text-gray-500">Connect your RentHive calendar to your Google Calendar so you can stay on top of work and never miss anything.</p>
+        <p className="mt-2 text-xs text-gray-400">Enable by setting <code className="rounded bg-gray-100 px-1">GOOGLE_CALENDAR_CLIENT_ID</code>. Runs disabled until configured.</p>
+        <span className="mt-3 inline-block cursor-not-allowed text-sm font-medium text-gray-400">🚀 Connect (not configured)</span>
+      </div>
+      <div className="mt-4 card p-6">
         <h2 className="font-semibold text-gray-900">Integrations</h2>
         <p className="mb-5 text-sm text-gray-500">
           Connect external services by setting their environment variable. Each one runs in a safe simulated mode until configured. See <code className="rounded bg-gray-100 px-1 text-xs">INTEGRATIONS.md</code> for setup steps.

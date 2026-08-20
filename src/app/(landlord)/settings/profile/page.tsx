@@ -8,11 +8,9 @@ export default async function ProfileSettingsPage() {
   const lastName = rest.join(" ");
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <SettingsNav active="profile" />
-      <div className="card p-6">
-        <h2 className="font-semibold text-gray-900">Profile details</h2>
-        <p className="mb-5 text-sm text-gray-500">Your profile is visible to your connected tenants.</p>
+      <div className="mt-6">
         <ProfileForm
           firstName={firstName ?? ""}
           lastName={lastName}
@@ -20,6 +18,9 @@ export default async function ProfileSettingsPage() {
           phone={user.phone ?? ""}
           company={user.company ?? ""}
           displayAsCompany={user.displayAsCompany}
+          imageUrl={user.imageUrl ?? ""}
+          address={{ line: user.addressLine ?? "", unit: user.addressUnit ?? "", city: user.city ?? "", zip: user.zip ?? "", state: user.state ?? "" }}
+          extra={{ timeZone: user.timeZone ?? "", dateFormat: user.dateFormat ?? "", timeFormat: user.timeFormat ?? "", measurement: user.measurement ?? "" }}
         />
       </div>
     </div>

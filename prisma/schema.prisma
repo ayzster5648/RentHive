@@ -116,6 +116,18 @@ model User {
   emergencyContact   String?
   notes              String?
   role               Role     @default(TENANT)
+  addressLine        String?
+  addressUnit        String?
+  city               String?
+  zip                String?
+  state              String?
+  timeZone           String?
+  dateFormat         String?
+  timeFormat         String?
+  measurement        String?
+  imageUrl           String?
+  twoFactor          Boolean  @default(false)
+  notificationPrefs  String?
   notifyOverdue      Boolean  @default(true)
   notifyApplications Boolean  @default(true)
   notifyMaintenance  Boolean  @default(true)

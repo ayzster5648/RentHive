@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Tabs } from "@/components/Tabs";
 
+const LABELS: Record<string, string> = { profile: "Profile", security: "Security", integrations: "Integrations", notifications: "Notifications" };
+
 export function SettingsNav({ active }: { active: string }) {
   const tabs = [
     { key: "profile", label: "Profile", href: "/settings/profile" },
@@ -10,7 +12,13 @@ export function SettingsNav({ active }: { active: string }) {
   ];
   return (
     <div>
-      <Link href="/settings" className="mb-3 inline-block text-sm text-brand-600 hover:underline">← All settings</Link>
+      <nav className="mb-3 text-sm text-gray-400">
+        <Link href="/dashboard" className="text-brand-600 hover:underline">Dashboard</Link>
+        <span className="mx-2">/</span>
+        <Link href="/settings" className="text-brand-600 hover:underline">Settings</Link>
+        <span className="mx-2">/</span>
+        <span className="font-medium text-gray-600">{LABELS[active] ?? active}</span>
+      </nav>
       <h1 className="mb-4 text-2xl font-bold text-gray-900">Account settings</h1>
       <Tabs tabs={tabs} active={active} />
     </div>

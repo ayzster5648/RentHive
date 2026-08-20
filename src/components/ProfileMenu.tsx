@@ -27,8 +27,8 @@ export function ProfileMenu({ name, email }: { name: string; email: string }) {
 
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-          {/* Clicking the name/header goes to account settings */}
-          <Link href="/settings" onClick={() => setOpen(false)} className="block px-4 py-3 hover:bg-gray-50">
+          {/* Clicking the name/header opens Account settings → Profile */}
+          <div className="px-4 py-3">
             <p className="text-xs font-medium text-gray-400">Landlord</p>
             <div className="mt-1 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">{initials(name)}</span>
@@ -37,17 +37,20 @@ export function ProfileMenu({ name, email }: { name: string; email: string }) {
                 <p className="truncate text-xs text-gray-400">{email}</p>
               </div>
             </div>
-          </Link>
-
-          <div className="border-t border-gray-100 px-3 py-2">
-            <Link href="/settings" onClick={() => setOpen(false)} className="flex w-full items-center justify-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <Link href="/settings/profile" onClick={() => setOpen(false)} className="mt-3 flex w-full items-center justify-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
               Settings
             </Link>
           </div>
 
           <div className="border-t border-gray-100 py-1">
+            <Link href="/login" onClick={() => setOpen(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+              {Icons.renters({ className: "h-4 w-4 text-gray-400" })} Add another account
+            </Link>
+          </div>
+
+          <div className="border-t border-gray-100 py-1">
             <form action="/api/logout" method="post">
-              <button type="submit" className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <button type="submit" className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                 {Icons.logout({ className: "h-4 w-4 text-gray-400" })} Log out
               </button>
             </form>
