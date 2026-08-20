@@ -8,17 +8,27 @@ import "server-only";
  * See INTEGRATIONS.md.
  */
 
-export type EmailInput = { to: string; subject: string; body: string };
+// "tenant" recipients are NEVER really emailed unless the account owner
+// explicitly opts in with ALLOW_TENANT_EMAIL=true. This keeps RentHive from
+// contacting tenants' real inboxes. Default audience is "tenant" (the safe one).
+export type EmailInput = { to: string; subject: string; body: string; audience?: "landlord" | "tenant" };
 export type EmailResult = { ok: boolean; simulated: boolean };
 
 export function emailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+export function tenantEmailAllowed(): boolean {
+  return process.env.ALLOW_TENANT_EMAIL === "true";
+}
+
 export async function sendEmail(input: EmailInput): Promise<EmailResult> {
-  if (!emailConfigured()) {
-    // --- Simulated path (default) ---
-    console.log(`[email:simulated] to=${input.to} subject="${input.subject}"`);
+  const audience = input.audience ?? "tenant";
+  const blockedTenant = audience === "tenant" && !tenantEmailAllowed();
+
+  if (!emailConfigured() || blockedTenant) {
+    // --- Simulated path (default, and always for tenants) ---
+    console.log(`[email:simulated${blockedTenant ? ":tenant-blocked" : ""}] to=${input.to} subject="${input.subject}"`);
     return { ok: true, simulated: true };
   }
 

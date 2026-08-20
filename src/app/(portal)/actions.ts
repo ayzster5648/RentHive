@@ -71,6 +71,7 @@ export async function createMaintenanceRequest(formData: FormData) {
       const { sendEmail } = await import("@/lib/integrations/notifications");
       await sendEmail({
         to: landlord.email,
+        audience: "landlord", // to the account owner, not a tenant
         subject: `New maintenance request: ${title}`,
         body: `${user.name} submitted a maintenance request at ${unit?.property.name} (${unit?.label}).\n\n${title}\n${description}\n\nPriority: ${priority}`,
       });

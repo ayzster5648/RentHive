@@ -329,6 +329,7 @@ export async function sendBalanceNotice(formData: FormData) {
   const { sendEmail } = await import("@/lib/integrations/notifications");
   await sendEmail({
     to: tenant.email,
+    audience: "tenant", // never actually delivered unless ALLOW_TENANT_EMAIL=true
     subject: `Rent balance reminder — ${formatCurrency(balance)} due`,
     body: `Hi ${tenant.name.split(" ")[0]},\n\nOur records show an outstanding balance of ${formatCurrency(balance)}. Please submit payment at your earliest convenience.\n\nThank you.`,
   });
