@@ -24,7 +24,6 @@ export function TenantMenu({ id, archived, label = "dots", addInvoiceHref }: { i
       {open && (
         <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg">
           <Link href={`/renters/${id}/edit`} onClick={() => setOpen(false)} className="block px-4 py-2 text-gray-700 hover:bg-gray-50">Edit</Link>
-          <Link href={`/renters/move-in?tenant=${id}`} onClick={() => setOpen(false)} className="block px-4 py-2 text-gray-700 hover:bg-gray-50">Send connection</Link>
           <Link href={`/renters/move-in?tenant=${id}`} onClick={() => setOpen(false)} className="block px-4 py-2 text-gray-700 hover:bg-gray-50">Move in</Link>
           <Link href={addInvoiceHref ?? "/revenues/new"} onClick={() => setOpen(false)} className="block px-4 py-2 text-gray-700 hover:bg-gray-50">Add invoice</Link>
           <Link href={`/renters/${id}?tab=insurance`} onClick={() => setOpen(false)} className="block px-4 py-2 text-gray-700 hover:bg-gray-50">Add insurance</Link>

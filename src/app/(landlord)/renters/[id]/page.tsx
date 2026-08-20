@@ -90,7 +90,7 @@ export default async function TenantProfilePage({
             </div>
             <p className="text-lg font-semibold text-gray-900">{tenant.name}</p>
             {tenant.phone && <p className="text-sm text-brand-600">{tenant.phone}</p>}
-            <a href={`mailto:${tenant.email}`} className="text-sm text-gray-500 hover:underline">{tenant.email}</a>
+            <p className="text-sm text-gray-500">{tenant.email}</p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">

@@ -12,7 +12,7 @@ export default async function IntegrationsSettingsPage() {
     { name: "Online payments", provider: "Stripe", on: paymentsConfigured(), env: "STRIPE_SECRET_KEY", desc: "Collect rent online with cards / ACH." },
     { name: "File storage", provider: "AWS S3 / R2", on: storageConfigured(), env: "S3_BUCKET", desc: "Store uploaded documents and photos." },
     { name: "Bank reconciliation", provider: "Plaid", on: bankConfigured(), env: "PLAID_CLIENT_ID", desc: "Pull bank statement lines to reconcile." },
-    { name: "Email notifications", provider: "Resend", on: emailConfigured(), env: "RESEND_API_KEY", desc: "Send tenants and yourself email alerts." },
+    { name: "Email notifications", provider: "Resend", on: emailConfigured(), env: "RESEND_API_KEY", desc: "Send yourself email alerts. Tenant email stays off unless ALLOW_TENANT_EMAIL is set." },
   ];
 
   return (

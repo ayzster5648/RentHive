@@ -115,14 +115,14 @@ export function MoveInWizard({ units, defaultTenant }: { units: Unit[]; defaultT
           <div className={cn("space-y-6", step !== 1 && "hidden")}>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Tenants</h2>
-              <p className="mb-4 text-sm text-gray-500">Enter the tenant. If they already have an account, the lease is shared with them automatically.</p>
+              <p className="mb-4 text-sm text-gray-500">Enter the tenant&apos;s details. Their contact info is stored on the lease record.</p>
               <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="label">Tenant name <span className="text-red-500">*</span></label><input name="tenantName" className="input" value={tenantName} onChange={(e) => setTenantName(e.target.value)} placeholder="Jane Doe" required /></div>
                 <div><label className="label">Tenant email <span className="text-red-500">*</span></label><input name="tenantEmail" type="email" className="input" defaultValue={defaultTenant?.email} placeholder="jane@email.com" required /></div>
                 <div><label className="label">Phone</label><input name="tenantPhone" className="input" defaultValue={defaultTenant?.phone} /></div>
               </div>
             </div>
-            <Toggle name="freeTenantPortal" defaultChecked label="Free Tenant Portal" desc="Share lease details, send messages, and collect payments by inviting the tenant to create an account via email." />
+            <Toggle name="freeTenantPortal" defaultChecked label="Tenant Portal access" desc="Track lease details, charges, and payments for this tenant inside RentHive." />
             <Toggle name="rentersInsurance" defaultChecked label="Renters Insurance" desc="Require tenants to obtain renters insurance or submit proof of an existing policy to protect their belongings and liability." />
             <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4"><div><p className="font-medium text-gray-900">Dependents</p><p className="text-sm text-gray-500">People who live in the unit but don&apos;t have portal access.</p></div><span className="text-sm font-medium text-brand-600">Add dependent</span></div>
           </div>

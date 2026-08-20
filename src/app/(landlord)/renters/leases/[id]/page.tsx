@@ -164,9 +164,9 @@ export default async function LeaseDetailPage({
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-100 p-4 text-sm text-gray-500">{Icons.documents({ className: "h-6 w-6 text-brand-300" })} No lease agreements requested.</div>
           </div>
           <div className="card p-6">
-            <div className="flex items-center gap-2"><h2 className="font-semibold text-gray-900">Notices</h2><Link href="/documents" className="text-sm font-medium text-brand-600">Send</Link></div>
-            <p className="mt-1 text-sm text-gray-500">Send notices through ready-to-use templates, then request a digital signature.</p>
-            <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-100 p-4 text-sm text-gray-500">{Icons.documents({ className: "h-6 w-6 text-brand-300" })} 0 notices signature pending.</div>
+            <div className="flex items-center gap-2"><h2 className="font-semibold text-gray-900">Notices</h2><Link href="/documents" className="text-sm font-medium text-brand-600">Prepare</Link></div>
+            <p className="mt-1 text-sm text-gray-500">Prepare notices from ready-to-use templates and store them under Documents.</p>
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-100 p-4 text-sm text-gray-500">{Icons.documents({ className: "h-6 w-6 text-brand-300" })} No notices prepared yet.</div>
           </div>
           <div className="card p-6"><div className="flex items-center justify-between"><h2 className="font-semibold text-gray-900">Attachments <span className="text-sm font-normal text-gray-400">(0 records)</span></h2><span className="text-sm font-medium text-gray-400">Upload</span></div></div>
         </div>

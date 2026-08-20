@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { sendBalanceNotice, applyCredit } from "../actions";
+import { applyCredit } from "../actions";
 
 export function BalanceActions({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
-  const [sent, setSent] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,10 +16,7 @@ export function BalanceActions({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="relative flex items-center justify-end gap-2" ref={ref}>
-      <form action={async (fd) => { await sendBalanceNotice(fd); setSent(true); setTimeout(() => setSent(false), 2500); }}>
-        <input type="hidden" name="tenantId" value={tenantId} />
-        <button type="submit" className="rounded-lg border border-brand-500 px-3 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">{sent ? "Notice sent ✓" : "Send Notice"}</button>
-      </form>
+      <button onClick={() => setCreditOpen(true)} className="rounded-lg border border-brand-500 px-3 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">Apply credit</button>
       <button onClick={() => setOpen((o) => !o)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="More">⋯</button>
 
       {open && (
