@@ -136,7 +136,7 @@ export function MoveInWizard({ units, defaultTenant }: { units: Unit[]; defaultT
               <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="label">First rent date <span className="text-red-500">*</span></label><input name="firstRentDate" type="date" className="input" defaultValue={today} /></div>
                 <div><label className="label">Frequency</label><select name="frequency" className="input" defaultValue="MONTHLY"><option value="MONTHLY">Monthly</option><option value="WEEKLY">Weekly</option><option value="YEARLY">Yearly</option></select></div>
-                <div><label className="label">Total amount <span className="text-red-500">*</span></label><input name="rentAmount" type="number" min="0" step="50" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} /></div>
+                <div><label className="label">Total amount <span className="text-red-500">*</span></label><input name="rentAmount" type="number" min="0" step="any" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} /></div>
               </div>
               <label className="mt-4 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="markPaid" className="h-4 w-4 accent-brand-600" /> Mark all past invoices as paid</label>
             </section>
@@ -146,7 +146,7 @@ export function MoveInWizard({ units, defaultTenant }: { units: Unit[]; defaultT
                 <p className="font-semibold text-gray-900">Deposits</p>
                 <p className="mb-2 text-sm text-gray-500">Include any additional deposits for this lease.</p>
                 <div className="flex flex-wrap items-end gap-2">
-                  <div><label className="label">Amount</label><input type="number" min="0" step="50" className="input w-40" value={depositAmt} onChange={(e) => setDepositAmt(e.target.value)} placeholder="0.00" /></div>
+                  <div><label className="label">Amount</label><input type="number" min="0" step="any" className="input w-40" value={depositAmt} onChange={(e) => setDepositAmt(e.target.value)} placeholder="0.00" /></div>
                   <button type="button" onClick={() => { const a = Number(depositAmt); if (a > 0) { setCharges((c) => [...c, { label: "Security deposit", type: "DEPOSIT", amount: a }]); setDepositAmt(""); } }} className="btn-secondary">+ Add deposit</button>
                 </div>
               </div>
@@ -155,7 +155,7 @@ export function MoveInWizard({ units, defaultTenant }: { units: Unit[]; defaultT
                 <p className="mb-2 text-sm text-gray-500">Add other one-time charges to include in the lease.</p>
                 <div className="flex flex-wrap items-end gap-2">
                   <div><label className="label">Description</label><input className="input w-44" value={txnLabel} onChange={(e) => setTxnLabel(e.target.value)} placeholder="Pet fee" /></div>
-                  <div><label className="label">Amount</label><input type="number" min="0" step="10" className="input w-32" value={txnAmt} onChange={(e) => setTxnAmt(e.target.value)} placeholder="0.00" /></div>
+                  <div><label className="label">Amount</label><input type="number" min="0" step="any" className="input w-32" value={txnAmt} onChange={(e) => setTxnAmt(e.target.value)} placeholder="0.00" /></div>
                   <button type="button" onClick={() => { const a = Number(txnAmt); if (a > 0 && txnLabel) { setCharges((c) => [...c, { label: txnLabel, type: "OTHER", amount: a }]); setTxnLabel(""); setTxnAmt(""); } }} className="btn-secondary">+ Add transaction</button>
                 </div>
               </div>

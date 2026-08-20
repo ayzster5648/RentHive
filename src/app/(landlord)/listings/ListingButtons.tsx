@@ -22,7 +22,7 @@ export function AddListingButton({ units }: { units: Unit[] }) {
           </div>
           <div>
             <label className="label">Asking rent</label>
-            <input name="rent" type="number" min="0" step="50" className="input" defaultValue={units[0]?.rent} required />
+            <input name="rent" type="number" min="0" step="any" className="input" defaultValue={units[0]?.rent} required />
           </div>
           <div>
             <label className="label">Headline</label>

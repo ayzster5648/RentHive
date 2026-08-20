@@ -33,7 +33,7 @@ export function AddUnitButton({ propertyId }: { propertyId: string }) {
             </div>
             <div>
               <label className="label">Rent</label>
-              <input name="rent" type="number" min="0" step="50" defaultValue={1500} className="input" />
+              <input name="rent" type="number" min="0" step="any" defaultValue={1500} className="input" />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">

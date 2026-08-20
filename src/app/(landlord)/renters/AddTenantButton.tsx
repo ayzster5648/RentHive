@@ -84,11 +84,11 @@ export function AddTenantButton({ vacantUnits }: { vacantUnits: VacantUnit[] }) 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label">Rent / mo</label>
-              <input name="rentAmount" type="number" min="0" step="50" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} />
+              <input name="rentAmount" type="number" min="0" step="any" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} />
             </div>
             <div>
               <label className="label">Deposit</label>
-              <input name="depositAmount" type="number" min="0" step="50" className="input" defaultValue={rent} />
+              <input name="depositAmount" type="number" min="0" step="any" className="input" defaultValue={rent} />
             </div>
             <div>
               <label className="label">Rent due day</label>

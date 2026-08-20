@@ -134,11 +134,11 @@ export function PropertyForm() {
               </div>
               <div>
                 <label className="label">Market rent</label>
-                <input name="marketRent" type="number" min="0" step="50" className="input" placeholder="0.00" />
+                <input name="marketRent" type="number" min="0" step="any" className="input" placeholder="0.00" />
               </div>
               <div>
                 <label className="label">Deposit</label>
-                <input name="deposit" type="number" min="0" step="50" className="input" placeholder="0.00" />
+                <input name="deposit" type="number" min="0" step="any" className="input" placeholder="0.00" />
               </div>
             </div>
           </Section>

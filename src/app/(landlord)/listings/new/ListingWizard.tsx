@@ -147,9 +147,9 @@ export function ListingWizard({ units, contact }: { units: Unit[]; contact: { na
               <H>Lease Details</H>
               <Sub>Provide the key lease terms and any details renters should know.</Sub>
               <div className="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
-                <div><label className="label">Monthly rent <span className="text-red-500">*</span></label><input name="rent" type="number" min="0" step="50" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} required /></div>
-                <div><label className="label">Security deposit</label><input name="securityDeposit" type="number" min="0" step="50" className="input" placeholder="0.00" /></div>
-                <div><label className="label">Amount refundable</label><input name="amountRefundable" type="number" min="0" step="50" className="input" placeholder="0.00" /></div>
+                <div><label className="label">Monthly rent <span className="text-red-500">*</span></label><input name="rent" type="number" min="0" step="any" className="input" value={rent} onChange={(e) => setRent(Number(e.target.value))} required /></div>
+                <div><label className="label">Security deposit</label><input name="securityDeposit" type="number" min="0" step="any" className="input" placeholder="0.00" /></div>
+                <div><label className="label">Amount refundable</label><input name="amountRefundable" type="number" min="0" step="any" className="input" placeholder="0.00" /></div>
                 <div><label className="label">Date available <span className="text-red-500">*</span></label><input name="dateAvailable" type="date" className="input" /></div>
                 <div><label className="label">Min lease (months)</label><select name="minLease" className="input" defaultValue=""><option value="">Select</option>{[1,3,6,9,12,18,24].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
                 <div><label className="label">Max lease (months)</label><select name="maxLease" className="input" defaultValue=""><option value="">Select</option>{[6,12,18,24,36].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
