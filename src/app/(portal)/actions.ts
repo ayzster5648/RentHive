@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { chargeRent } from "@/lib/integrations/payments";
+import { emailEnabled } from "@/lib/notifications";
 
 export async function payInvoice(formData: FormData) {
   const user = await requireRole("TENANT");
@@ -57,9 +58,26 @@ export async function createMaintenanceRequest(formData: FormData) {
       description,
       priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
       status: "OPEN",
+      refNumber: Math.floor(100000 + Math.random() * 900000),
     },
   });
 
+  // Notify the landlord if their "new maintenance request" email is enabled.
+  const unit = await db.unit.findUnique({ where: { id: lease.unitId }, include: { property: true } });
+  const landlordId = unit?.property.landlordId;
+  if (landlordId && (await emailEnabled(landlordId, "maintNew"))) {
+    const landlord = await db.user.findUnique({ where: { id: landlordId } });
+    if (landlord) {
+      const { sendEmail } = await import("@/lib/integrations/notifications");
+      await sendEmail({
+        to: landlord.email,
+        subject: `New maintenance request: ${title}`,
+        body: `${user.name} submitted a maintenance request at ${unit?.property.name} (${unit?.label}).\n\n${title}\n${description}\n\nPriority: ${priority}`,
+      });
+    }
+  }
+
   revalidatePath("/portal/maintenance");
   revalidatePath("/portal");
+  revalidatePath("/maintenance");
 }

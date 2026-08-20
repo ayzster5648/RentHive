@@ -72,9 +72,12 @@ export default async function NotificationsSettingsPage() {
       <SettingsNav active="notifications" />
       <form action={updateNotifications} className="mt-6 card p-6">
         <input type="hidden" name="__keys" value={keysMeta} />
-        <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
-          <div className="flex gap-10 pr-1 text-sm font-medium text-gray-500"><span>Email</span><span>Feed</span></div>
+        <div className="mb-4 border-b border-gray-100 pb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
+            <div className="flex gap-10 pr-1 text-sm font-medium text-gray-500"><span>Email</span><span>Feed</span></div>
+          </div>
+          <p className="mt-1 text-xs text-gray-400"><strong>Feed</strong> controls the in-app notification bell. <strong>Email</strong> sends to your inbox once the email integration is enabled.</p>
         </div>
 
         <div className="divide-y divide-gray-100">
