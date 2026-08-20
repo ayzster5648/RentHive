@@ -15,7 +15,7 @@ export default async function PortfolioPage({
   const user = await requireRole("LANDLORD");
 
   const properties = await db.property.findMany({
-    where: { landlordId: user.id },
+    where: { landlordId: user.id, archived: false },
     include: {
       units: { include: { leases: { where: { status: "ACTIVE" }, include: { tenant: true, invoices: true } } }, orderBy: { label: "asc" } },
     },

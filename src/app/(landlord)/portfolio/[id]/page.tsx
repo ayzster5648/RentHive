@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui";
 import { Icons } from "@/components/icons";
 import { TrackView } from "@/components/TrackView";
 import { AddUnitButton } from "./AddUnitButton";
+import { PropertyActions } from "./PropertyActions";
 
 // Stable short display number from the cuid.
 function shortNo(id: string): number {
@@ -69,7 +70,7 @@ export default async function PropertyDetailPage({
         </div>
         <div className="flex gap-2">
           <AddUnitButton propertyId={property.id} />
-          <Link href={`/renters?property=${property.id}`} className="btn-secondary">Actions ▾</Link>
+          <PropertyActions id={property.id} archived={property.archived} />
         </div>
       </div>
 
@@ -126,14 +127,6 @@ export default async function PropertyDetailPage({
 
           {tab === "summary" && (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
-                <div>
-                  <p className="font-semibold text-gray-900">Do you have the right insurance?</p>
-                  <p className="text-sm text-gray-600">Protect your rental property from disasters, liability, theft, and more.</p>
-                </div>
-                <span className="btn-secondary cursor-default opacity-70">Learn more</span>
-              </div>
-
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="card p-5">
                   <div className="mb-3 flex items-center justify-between">

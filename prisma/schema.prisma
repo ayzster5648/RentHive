@@ -161,6 +161,8 @@ model Property {
   features            String[] @default([])
   amenities           String[] @default([])
   imageUrl            String?
+  status              String?
+  archived            Boolean  @default(false)
   landlordId          String
   createdAt           DateTime @default(now())
 

@@ -88,6 +88,59 @@ export async function createPropertyFull(formData: FormData) {
   redirect(`/portfolio/${property.id}`);
 }
 
+/** Edit an existing property (from the property → Actions → Edit page). */
+export async function updateProperty(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const owned = await db.property.findFirst({ where: { id, landlordId: user.id } });
+  if (!owned) throw new Error("Property not found.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const state = String(formData.get("state") ?? "").trim();
+  const zip = String(formData.get("zip") ?? "").trim();
+  if (!name || !address || !city || !state || !zip) throw new Error("Property name and full address are required.");
+
+  const yearBuiltRaw = String(formData.get("yearBuilt") ?? "").trim();
+  await db.property.update({
+    where: { id },
+    data: {
+      name, address, city, state, zip,
+      country: String(formData.get("country") ?? "United States").trim() || "United States",
+      yearBuilt: yearBuiltRaw ? Number(yearBuiltRaw) : null,
+      mls: String(formData.get("mls") ?? "").trim() || null,
+      status: String(formData.get("status") ?? "").trim() || null,
+      amenities: formData.getAll("amenities").map(String),
+      ...(String(formData.get("imageUrl") ?? "").trim() ? { imageUrl: String(formData.get("imageUrl")).trim() } : {}),
+    },
+  });
+  revalidatePath(`/portfolio/${id}`);
+  revalidatePath("/portfolio");
+  redirect(`/portfolio/${id}`);
+}
+
+export async function archiveProperty(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const p = await db.property.findFirst({ where: { id, landlordId: user.id } });
+  if (!p) throw new Error("Property not found.");
+  await db.property.update({ where: { id }, data: { archived: !p.archived } });
+  revalidatePath("/portfolio");
+  revalidatePath(`/portfolio/${id}`);
+}
+
+export async function deleteProperty(formData: FormData) {
+  const user = await requireRole("LANDLORD");
+  const id = String(formData.get("id") ?? "");
+  const p = await db.property.findFirst({ where: { id, landlordId: user.id } });
+  if (!p) throw new Error("Property not found.");
+  await db.property.delete({ where: { id } });
+  revalidatePath("/portfolio");
+  revalidatePath("/dashboard");
+  redirect("/portfolio");
+}
+
 export async function addUnit(formData: FormData) {
   await requireRole("LANDLORD");
 
